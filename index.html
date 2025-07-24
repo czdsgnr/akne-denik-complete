@@ -23,19 +23,209 @@
     
     <title>Akné Deník - Tvoje cesta k dokonalé pleti</title>
     
-    <!-- Debug script pro mobilní testování -->
+    <!-- 📱 POKROČILÝ MOBILNÍ DEBUG SCRIPT -->
     <script>
-      console.log('🔍 Index.html loaded');
-      console.log('🔍 User agent:', navigator.userAgent);
-      console.log('🔍 Screen size:', window.screen.width + 'x' + window.screen.height);
+      console.log('🚀 Akné Deník - Debug start');
       
-      // Error handler pro nekompletní moduly
+      // 1. ZÁKLADNÍ INFO
+      const debug = {
+        userAgent: navigator.userAgent,
+        viewport: `${window.innerWidth}x${window.innerHeight}`,
+        screen: `${screen.width}x${screen.height}`,
+        pixelRatio: window.devicePixelRatio || 1,
+        online: navigator.onLine,
+        cookieEnabled: navigator.cookieEnabled,
+        language: navigator.language,
+        platform: navigator.platform,
+        url: window.location.href,
+        timestamp: new Date().toISOString()
+      };
+
+      console.log('📱 Debug info:', debug);
+
+      // 2. VYTVOŘ DEBUG OVERLAY
+      function createDebugOverlay() {
+        const div = document.createElement('div');
+        div.id = 'debug-overlay';
+        div.style.cssText = `
+          position: fixed;
+          top: 10px;
+          right: 10px;
+          width: 220px;
+          max-height: 400px;
+          background: rgba(0,0,0,0.95);
+          color: white;
+          padding: 12px;
+          font-family: 'Courier New', monospace;
+          font-size: 11px;
+          border-radius: 8px;
+          z-index: 999999;
+          overflow-y: auto;
+          line-height: 1.4;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+          border: 1px solid #ec4899;
+        `;
+        
+        div.innerHTML = `
+          <div style="color: #ec4899; font-weight: bold; margin-bottom: 8px; border-bottom: 1px solid #ec4899; padding-bottom: 4px;">
+            🔍 Akné Deník Debug
+          </div>
+          <div style="margin-bottom: 8px; font-size: 10px; color: #ccc;">
+            📱 ${debug.viewport}<br>
+            🌐 ${debug.online ? 'Online' : 'Offline'}<br>
+            🔧 ${debug.userAgent.split(' ').pop()}
+          </div>
+          <div id="debug-messages"></div>
+          <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #333;">
+            <button onclick="location.reload()" style="
+              background: #ec4899; 
+              color: white; 
+              border: none; 
+              padding: 6px 10px; 
+              border-radius: 4px; 
+              font-size: 10px; 
+              margin-right: 5px;
+              cursor: pointer;
+            ">🔄 Reload</button>
+            <button onclick="document.getElementById('debug-overlay').style.display='none'" style="
+              background: #666; 
+              color: white; 
+              border: none; 
+              padding: 6px 10px; 
+              border-radius: 4px; 
+              font-size: 10px;
+              cursor: pointer;
+            ">❌ Hide</button>
+          </div>
+        `;
+        
+        document.body.appendChild(div);
+        return div;
+      }
+
+      // 3. ZOBRAZ DEBUG ZPRÁVU
+      function showDebugMessage(message, type = 'info') {
+        const overlay = document.getElementById('debug-overlay') || createDebugOverlay();
+        const messagesDiv = document.getElementById('debug-messages');
+        
+        const colors = {
+          info: '#10b981',
+          warning: '#f59e0b', 
+          error: '#ef4444',
+          success: '#22c55e'
+        };
+        
+        const time = new Date().toLocaleTimeString('cs-CZ');
+        const color = colors[type] || colors.info;
+        
+        messagesDiv.innerHTML += `
+          <div style="color: ${color}; font-size: 10px; margin: 3px 0; word-break: break-all;">
+            [${time}] ${message}
+          </div>
+        `;
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      }
+
+      // 4. ERROR CATCHING
       window.addEventListener('error', (e) => {
-        console.error('🚨 Global error:', e.error);
-        if (e.error && e.error.message && e.error.message.includes('module')) {
-          console.error('🚨 Module loading error detected!');
+        console.error('💥 JavaScript Error:', e.error);
+        showDebugMessage(`ERROR: ${e.error?.message || e.message}`, 'error');
+        
+        if (e.filename) {
+          showDebugMessage(`FILE: ${e.filename}:${e.lineno}:${e.colno}`, 'error');
+        }
+        
+        if (e.error?.stack) {
+          showDebugMessage(`STACK: ${e.error.stack.split('\n')[0]}`, 'error');
         }
       });
+
+      window.addEventListener('unhandledrejection', (e) => {
+        console.error('💥 Promise Rejection:', e.reason);
+        showDebugMessage(`PROMISE: ${e.reason?.message || e.reason}`, 'error');
+      });
+
+      // 5. KONTROLA ES MODULES
+      const supportsESModules = 'noModule' in HTMLScriptElement.prototype;
+      showDebugMessage(`ES Modules: ${supportsESModules ? '✅ Supported' : '❌ Not supported'}`, supportsESModules ? 'success' : 'error');
+
+      if (!supportsESModules) {
+        showDebugMessage('⚠️ Browser nepodporuje ES modules!', 'error');
+        showDebugMessage('💡 Zkus aktualizovat prohlížeč', 'warning');
+      }
+
+      // 6. TIMEOUT PRO REACT LOADING
+      let reactLoadStartTime = Date.now();
+      
+      const checkReactLoad = () => {
+        const root = document.getElementById('root');
+        const loadingDiv = root?.querySelector('div[style*="position: fixed"]');
+        
+        if (root && root.children.length > 0 && !loadingDiv) {
+          const loadTime = Date.now() - reactLoadStartTime;
+          showDebugMessage(`✅ React loaded (${loadTime}ms)`, 'success');
+        } else {
+          showDebugMessage('⏳ Waiting for React...', 'warning');
+        }
+      };
+      
+      // Kontroluj React každé 2 sekundy
+      setTimeout(checkReactLoad, 2000);
+      setTimeout(checkReactLoad, 5000);
+      setTimeout(() => {
+        const root = document.getElementById('root');
+        const loadingDiv = root?.querySelector('div[style*="position: fixed"]');
+        
+        if (loadingDiv) {
+          showDebugMessage('❌ React se nenačetl do 10s!', 'error');
+          showDebugMessage('💡 Možný problém s Vite buildem', 'error');
+        }
+      }, 10000);
+
+      // 7. KONTROLA ZDROJŮ
+      setTimeout(() => {
+        // CSS
+        const hasCSS = document.querySelectorAll('link[rel="stylesheet"], style').length > 0;
+        showDebugMessage(`CSS: ${hasCSS ? '✅' : '❌'}`, hasCSS ? 'success' : 'warning');
+        
+        // Firebase
+        setTimeout(() => {
+          if (window.firebase || window.__FIREBASE_DEFAULTS__) {
+            showDebugMessage('Firebase: ✅', 'success');
+          } else {
+            showDebugMessage('Firebase: ❌', 'warning');
+          }
+        }, 3000);
+        
+        // Service Worker
+        if ('serviceWorker' in navigator) {
+          showDebugMessage('SW Support: ✅', 'success');
+        } else {
+          showDebugMessage('SW Support: ❌', 'warning');
+        }
+      }, 1000);
+
+      // 8. NETWORK MONITORING
+      window.addEventListener('online', () => {
+        showDebugMessage('🌐 Back online', 'success');
+      });
+      
+      window.addEventListener('offline', () => {
+        showDebugMessage('🌐 Gone offline', 'warning');
+      });
+
+      // 9. PERFORMANCE MONITORING
+      window.addEventListener('load', () => {
+        const loadTime = performance.now();
+        showDebugMessage(`⚡ Page loaded (${Math.round(loadTime)}ms)`, 'info');
+      });
+
+      // 10. INITIAL DEBUG MESSAGES
+      setTimeout(() => {
+        showDebugMessage('🚀 Debug initialized', 'success');
+        showDebugMessage(`📱 ${debug.viewport}`, 'info');
+        showDebugMessage(`🔧 ${debug.platform}`, 'info');
+      }, 100);
     </script>
   </head>
   <body>
@@ -47,6 +237,7 @@
         display: flex; align-items: center; justify-content: center;
         background: linear-gradient(to bottom right, #fdf2f8, #f3e8ff);
         font-family: system-ui, sans-serif;
+        z-index: 1000;
       ">
         <div style="text-align: center;">
           <div style="
@@ -56,7 +247,8 @@
             animation: spin 1s linear infinite;
             margin: 0 auto 16px;
           "></div>
-          <p style="color: #6b7280; margin: 0;">Načítání Akné Deníku...</p>
+          <p style="color: #6b7280; margin: 0; font-size: 16px; font-weight: 500;">Načítání Akné Deníku...</p>
+          <p style="color: #9ca3af; margin: 8px 0 0 0; font-size: 12px;">Pokud se stránka nenačte, zkuste obnovit</p>
         </div>
       </div>
       
@@ -68,6 +260,32 @@
       </style>
     </div>
     
+    <!-- React app -->
     <script type="module" src="/src/main.jsx"></script>
+    
+    <!-- Fallback pro starší prohlížeče -->
+    <noscript>
+      <div style="
+        position: fixed; 
+        top: 0; left: 0; right: 0; bottom: 0; 
+        display: flex; align-items: center; justify-content: center;
+        background: #fee2e2;
+        font-family: system-ui, sans-serif;
+        padding: 20px;
+        text-align: center;
+      ">
+        <div style="background: white; padding: 30px; border-radius: 12px; max-width: 400px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+          <h2 style="color: #dc2626; margin-bottom: 16px;">⚠️ JavaScript je vypnutý</h2>
+          <p style="color: #374151; margin-bottom: 16px;">
+            Pro správné fungování Akné Deníku je potřeba povolit JavaScript v prohlížeči.
+          </p>
+          <p style="color: #6b7280; font-size: 14px;">
+            Jak povolit JavaScript:<br>
+            <strong>Chrome/Safari:</strong> Nastavení → Pokročilé → JavaScript<br>
+            <strong>Firefox:</strong> about:config → javascript.enabled
+          </p>
+        </div>
+      </div>
+    </noscript>
   </body>
 </html>

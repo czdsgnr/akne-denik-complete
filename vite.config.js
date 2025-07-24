@@ -10,12 +10,12 @@ export default defineConfig({
     },
   },
   build: {
-    // ✅ OPRAVENÉ TARGET ENVIRONMENTS - novější browsery
+    // 🔧 MOBILNÍ KOMPATIBILITA - starší browsery
     target: [
-      'chrome89',    // Místo chrome87
-      'firefox89',   // Místo firefox78  
-      'safari15',    // Místo safari14
-      'edge89'       // Místo edge88
+      'chrome85',    // Starší verze pro lepší support
+      'firefox85',   
+      'safari14',    
+      'edge85'       
     ],
     rollupOptions: {
       output: {
@@ -28,16 +28,22 @@ export default defineConfig({
     },
     assetsDir: 'assets',
     sourcemap: false,
-    // ✅ Modernější ES target
+    // 🔧 KONZERVATIVNĚJŠÍ ES TARGET
     minify: 'esbuild',
-    cssMinify: true
+    cssMinify: true,
+    // 🔧 Větší compatibility
+    polyfillModulePreload: true
   },
-  // ✅ Aktualizované browserslist pro modernější support
+  // 🔧 STARŠÍ ES TARGET pro mobile
   esbuild: {
-    target: 'es2022', // Místo es2020
+    target: 'es2020', // Místo es2022
     supported: {
-      'top-level-await': true
+      'top-level-await': false // Vypni top-level await
     }
+  },
+  // 🔧 LEGACY PLUGIN pro fallback
+  legacy: {
+    targets: ['defaults', 'not IE 11']
   },
   server: {
     port: 5174,
