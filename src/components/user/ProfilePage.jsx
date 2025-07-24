@@ -11,7 +11,6 @@ import {
   Mail, 
   Calendar,
   Target,
-  Bell,
   Heart,
   Edit,
   Save,
@@ -24,7 +23,10 @@ import {
   CheckCircle2,
   Loader2,
   Crown,
-  Star
+  Star,
+  Clock,
+  CalendarDays,
+  FileText
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { db } from '../../lib/firebase'
@@ -43,12 +45,12 @@ function ProfilePage() {
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(null)
   const fileInputRef = useRef(null)
-  const [notifications, setNotifications] = useState({
-    daily: true,
-    photo: true,
-    progress: false,
-    push: false
-  })
+  const [preferredReminderTime, setPreferredReminderTime] = useState('09:00')
+
+  // 🚀 SCROLL TO TOP při načtení profilu
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [])
 
   useEffect(() => {
     const loadUserData = async () => {
@@ -61,9 +63,9 @@ function ProfilePage() {
           setUserData(data)
           setEditedData(data)
           
-          // Načtení nastavení notifikací
-          if (data.notifications) {
-            setNotifications(data.notifications)
+          // Načtení preferovaného času připomenutí
+          if (data.preferredReminderTime) {
+            setPreferredReminderTime(data.preferredReminderTime)
           }
         }
       } catch (error) {
@@ -150,7 +152,7 @@ function ProfilePage() {
     try {
       const updateData = {
         ...editedData,
-        notifications,
+        preferredReminderTime,
         updatedAt: new Date()
       }
       
@@ -175,52 +177,61 @@ function ProfilePage() {
     setError(null)
   }
 
-  const handleNotificationChange = async (key, value) => {
-    const newNotifications = { ...notifications, [key]: value }
-    setNotifications(newNotifications)
+  // 📅 Export kalendářového připomenutí
+  const handleExportCalendar = () => {
+    const startDate = new Date()
+    const endDate = new Date()
+    endDate.setFullYear(endDate.getFullYear() + 1) // Celý rok
+
+    const [hour, minute] = preferredReminderTime.split(':')
+    startDate.setHours(parseInt(hour), parseInt(minute), 0, 0)
+
+    // ICS format pro kalendář
+    const icsContent = generateICSFile(startDate, endDate, preferredReminderTime)
     
-    // 🚀 HAPTIKA při zapnutí notifikací
-    if (value && navigator.vibrate) {
-      navigator.vibrate([100, 50, 100]) // Krátké potvrzení
-    }
-    
-    // 🔔 Pokud zapíná push notifikace, požádáme o povolení
-    if (key === 'push' && value) {
-      await requestNotificationPermission()
-    }
+    const blob = new Blob([icsContent], { type: 'text/calendar' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'akne-denik-pripomenuti.ics'
+    a.click()
+    URL.revokeObjectURL(url)
+
+    setSuccess('Kalendářové připomenutí bylo exportováno! 📅')
+    setTimeout(() => setSuccess(null), 3000)
   }
 
-  // 🔔 PWA Push Notifications setup
-  const requestNotificationPermission = async () => {
-    if (!('Notification' in window)) {
-      setError('Tento prohlížeč nepodporuje notifikace')
-      return
+  const generateICSFile = (startDate, endDate, time) => {
+    const formatDate = (date) => {
+      return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
     }
 
-    try {
-      const permission = await Notification.requestPermission()
-      
-      if (permission === 'granted') {
-        setSuccess('Notifikace byly povoleny! 🔔')
-        
-        // Testovací notifikace s haptikou
-        if (navigator.vibrate) {
-          navigator.vibrate([200, 100, 200, 100, 200])
-        }
-        
-        new Notification('Akné Deník', {
-          body: 'Notifikace jsou nyní aktivní! 💖',
-          icon: '/favicon.ico',
-          badge: '/favicon.ico'
-        })
-      } else {
-        setNotifications(prev => ({ ...prev, push: false }))
-        setError('Notifikace byly zamítnuty')
-      }
-    } catch (error) {
-      console.error('Chyba při povolování notifikací:', error)
-      setError('Chyba při nastavování notifikací')
-    }
+    return `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Akné Deník//Denní připomenutí//CS
+BEGIN:VEVENT
+UID:akne-denik-${user.uid}-${Date.now()}@aknedenik.cz
+DTSTAMP:${formatDate(new Date())}
+DTSTART:${formatDate(startDate)}
+DTEND:${formatDate(new Date(startDate.getTime() + 15 * 60000))}
+RRULE:FREQ=DAILY;UNTIL=${formatDate(endDate)}
+SUMMARY:Akné Deník - Denní úkol
+DESCRIPTION:Čas na denní péči o pleť! Otevři Akné Deník a zjisti dnešní úkol.
+LOCATION:Akné Deník App
+CATEGORIES:ZDRAVÍ,KRÁSA
+PRIORITY:5
+BEGIN:VALARM
+TRIGGER:-PT15M
+ACTION:DISPLAY
+DESCRIPTION:Za 15 minut: Akné Deník úkol
+END:VALARM
+BEGIN:VALARM
+TRIGGER:PT0M
+ACTION:DISPLAY
+DESCRIPTION:Akné Deník - Čas na denní úkol! 💖
+END:VALARM
+END:VEVENT
+END:VCALENDAR`
   }
 
   // Překlad hodnot
@@ -283,8 +294,6 @@ function ProfilePage() {
                 <p className="text-sm text-gray-500">Tvoje nastavení a informace</p>
               </div>
             </div>
-            
-            {/* Tlačítko Upravit je pouze v sekci "Základní informace" */}
           </div>
         </div>
       </header>
@@ -325,7 +334,7 @@ function ProfilePage() {
           </div>
         )}
 
-        {/* Profil uživatele - NOVÝ ČISTŠÍ DESIGN */}
+        {/* Profil uživatele - ČISTÝ DESIGN */}
         <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-6">
           <div className="flex flex-col sm:flex-row sm:items-start sm:space-x-6">
             
@@ -491,7 +500,7 @@ function ProfilePage() {
           </div>
         </div>
 
-        {/* Základní informace - 🆕 PŘIDANÉ TLAČÍTKO UPRAVIT */}
+        {/* Základní informace */}
         <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-6">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-3">
@@ -504,7 +513,6 @@ function ProfilePage() {
               </div>
             </div>
             
-            {/* 🆕 TLAČÍTKO UPRAVIT PŘÍMO V SEKCI */}
             {!editing && (
               <Button
                 onClick={() => setEditing(true)}
@@ -626,98 +634,107 @@ function ProfilePage() {
           )}
         </div>
 
-        {/* 🔔 Nastavení notifikací - VYLEPŠENÉ S PWA */}
+        {/* 📅 PŘIPOMENUTÍ - NOVÁ SEKCE (místo notifikací) */}
         <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-6">
           <div className="flex items-center space-x-3 mb-6">
-            <div className="w-10 h-10 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl flex items-center justify-center">
-              <Bell className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center">
+              <Clock className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Notifikace & PWA</h3>
-              <p className="text-sm text-gray-600">Nastav si připomenutí (funkční pro PWA)</p>
+              <h3 className="text-lg font-semibold text-gray-900">Připomenutí & Návyky</h3>
+              <p className="text-sm text-gray-600">Nastav si způsob, jak nezapomenout na denní rutinu</p>
             </div>
           </div>
 
-          <div className="space-y-4">
-            {/* Denní připomenutí */}
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-              <div className="flex items-center space-x-3">
-                <Bell className="w-5 h-5 text-gray-600" />
-                <div>
-                  <p className="font-medium text-gray-900">Denní připomenutí</p>
-                  <p className="text-sm text-gray-600">Notifikace pro denní úkoly</p>
-                </div>
+          <div className="space-y-6">
+            
+            {/* Preferovaný čas */}
+            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-4 border border-blue-200">
+              <div className="flex items-center space-x-3 mb-3">
+                <Clock className="w-5 h-5 text-blue-600" />
+                <h4 className="font-medium text-gray-900">Preferovaný čas pro péči</h4>
               </div>
-              <button
-                onClick={() => handleNotificationChange('daily', !notifications.daily)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  notifications.daily ? 'bg-pink-500' : 'bg-gray-200'
-                }`}
-              >
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  notifications.daily ? 'translate-x-6' : 'translate-x-1'
-                }`} />
-              </button>
+              <div className="flex items-center space-x-3">
+                <Input
+                  type="time"
+                  value={preferredReminderTime}
+                  onChange={(e) => setPreferredReminderTime(e.target.value)}
+                  className="w-32"
+                />
+                <span className="text-sm text-gray-600">
+                  Ideální čas pro denní rutinu péče o pleť
+                </span>
+              </div>
             </div>
 
-            {/* Foto připomenutí */}
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-              <div className="flex items-center space-x-3">
-                <Camera className="w-5 h-5 text-gray-600" />
-                <div>
-                  <p className="font-medium text-gray-900">Foto připomenutí</p>
-                  <p className="text-sm text-gray-600">Upozornění na foto dny</p>
+            {/* Export kalendáře */}
+            <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <CalendarDays className="w-5 h-5 text-purple-600" />
+                  <div>
+                    <h4 className="font-medium text-gray-900">Kalendářové připomenutí</h4>
+                    <p className="text-sm text-gray-600">
+                      Exportuj připomenutí do svého kalendáře na {preferredReminderTime}
+                    </p>
+                  </div>
                 </div>
+                <Button
+                  onClick={handleExportCalendar}
+                  variant="outline"
+                  size="sm"
+                  className="text-purple-600 border-purple-300 hover:bg-purple-50"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Exportovat .ics
+                </Button>
               </div>
-              <button
-                onClick={() => handleNotificationChange('photo', !notifications.photo)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  notifications.photo ? 'bg-pink-500' : 'bg-gray-200'
-                }`}
-              >
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  notifications.photo ? 'translate-x-6' : 'translate-x-1'
-                }`} />
-              </button>
             </div>
 
-            {/* 🆕 PWA Push notifikace */}
-            <div className="flex items-center justify-between p-4 bg-gradient-to-r from-pink-50 to-purple-50 rounded-lg border border-pink-200">
-              <div className="flex items-center space-x-3">
-                <div className="flex items-center space-x-1">
-                  <Bell className="w-5 h-5 text-pink-600" />
-                  <Badge className="bg-pink-500 text-white text-xs">PWA</Badge>
+            {/* Další možnosti připomenutí */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              
+              {/* In-app připomenutí */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="flex items-center space-x-3 mb-2">
+                  <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                    <CheckCircle2 className="w-4 h-4 text-white" />
+                  </div>
+                  <h4 className="font-medium text-gray-900">V aplikaci</h4>
                 </div>
-                <div>
-                  <p className="font-medium text-gray-900">Push notifikace</p>
-                  <p className="text-sm text-gray-600">Systémové notifikace (s haptikou 📳)</p>
-                </div>
+                <p className="text-sm text-gray-600">
+                  Připomenutí se zobrazí při otevření aplikace, pokud jsi dnes ještě nevyplnila úkol
+                </p>
               </div>
-              <button
-                onClick={() => handleNotificationChange('push', !notifications.push)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  notifications.push ? 'bg-pink-500' : 'bg-gray-200'
-                }`}
-              >
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  notifications.push ? 'translate-x-6' : 'translate-x-1'
-                }`} />
-              </button>
+
+              {/* Browser bookmark */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="flex items-center space-x-3 mb-2">
+                  <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
+                    <Star className="w-4 h-4 text-white" />
+                  </div>
+                  <h4 className="font-medium text-gray-900">Záložka</h4>
+                </div>
+                <p className="text-sm text-gray-600">
+                  Přidej si aplikaci do oblíbených nebo na domovskou obrazovku
+                </p>
+              </div>
+
             </div>
 
-            {/* PWA Info panel */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+            {/* Tips pro vytvoření návyku */}
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
               <div className="flex items-start space-x-3">
-                <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <CheckCircle2 className="w-4 h-4 text-white" />
+                <div className="w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Heart className="w-4 h-4 text-white" />
                 </div>
                 <div className="text-sm">
-                  <p className="font-medium text-blue-900 mb-1">PWA funkce aktivní! 🚀</p>
-                  <ul className="text-blue-700 space-y-1">
-                    <li>• Push notifikace fungují v prohlížeči i na mobilu</li>
-                    <li>• Haptická odezva při zapnutí notifikací 📳</li>
-                    <li>• Aplikace funguje offline po instalaci</li>
-                    <li>• Přidej do domovské obrazovky pro lepší zážitek</li>
+                  <p className="font-medium text-yellow-900 mb-2">💡 Tipy pro pravidelnost:</p>
+                  <ul className="text-yellow-800 space-y-1">
+                    <li>• Navažte péči o pleť na existující návyk (např. čištění zubů)</li>
+                    <li>• Připravte si produkty na viditelné místo</li>
+                    <li>• Vyplňujte úkoly vždy ve stejnou denní dobu</li>
+                    <li>• Oslavte malé úspěchy - každý dokončený den se počítá! 🎉</li>
                   </ul>
                 </div>
               </div>
