@@ -26,6 +26,13 @@ function AppContent() {
       try {
         console.log('🔄 Inicializace PWA...')
         
+        // 🔧 BEZPEČNÁ KONTROLA NOTIFICATION API
+        const hasNotificationSupport = typeof window !== 'undefined' && 
+                                      'Notification' in window && 
+                                      typeof Notification !== 'undefined'
+        
+        console.log('🔔 Notification API support:', hasNotificationSupport)
+        
         // Inicializace PWA systému
         const success = await pwaNotifications.init()
         
@@ -35,10 +42,16 @@ function AppContent() {
           // Zobrazit install prompt pokud je dostupný
           pwaNotifications.promptInstall()
           
-          // Pokud má uživatel notifikace povolené, naplánuj denní připomenutí
-          if (Notification.permission === 'granted') {
+          // 🔧 BEZPEČNÁ KONTROLA PŘED POUŽITÍM NOTIFICATION
+          if (hasNotificationSupport && Notification.permission === 'granted') {
             console.log('🔔 Nastavuji denní připomenutí...')
-            await pwaNotifications.scheduleDailyReminder(9, 0) // 9:00 ráno
+            try {
+              await pwaNotifications.scheduleDailyReminder(9, 0) // 9:00 ráno
+            } catch (error) {
+              console.error('❌ Chyba při nastavení připomenutí:', error)
+            }
+          } else {
+            console.log('🔔 Notification API není dostupné nebo není povolené')
           }
           
         } else {
@@ -131,7 +144,7 @@ function App() {
       <Router>
         <AppContent />
         
-        {/* 🚀 PWA komponenty */}
+        {/* 🚀 PWA komponenty - pouze pokud jsou dostupné */}
         <PWAInstallPrompt />
         <PWAStatusBadge />
       </Router>

@@ -1,4 +1,4 @@
-// 📁 src/components/PWAStatusBadge.jsx - PWA status indikátor
+// 📁 src/components/PWAStatusBadge.jsx - Bezpečná verze pro mobil
 import React, { useState, useEffect } from 'react'
 import { Smartphone, Wifi, WifiOff, Bell, BellOff } from 'lucide-react'
 
@@ -6,7 +6,7 @@ function PWAStatusBadge() {
   const [status, setStatus] = useState({
     isStandalone: false,
     isOnline: navigator.onLine,
-    hasNotifications: Notification.permission === 'granted',
+    hasNotifications: false,
     hasServiceWorker: false
   })
 
@@ -33,18 +33,31 @@ function PWAStatusBadge() {
       }
     }
 
+    // 🔧 BEZPEČNÁ KONTROLA NOTIFICATION API
+    const checkNotifications = () => {
+      try {
+        if (typeof window !== 'undefined' && 
+            'Notification' in window && 
+            typeof Notification !== 'undefined') {
+          const hasNotifications = Notification.permission === 'granted'
+          setStatus(prev => ({ ...prev, hasNotifications }))
+        } else {
+          setStatus(prev => ({ ...prev, hasNotifications: false }))
+        }
+      } catch (error) {
+        console.warn('🔔 Notification check error:', error)
+        setStatus(prev => ({ ...prev, hasNotifications: false }))
+      }
+    }
+
     // Online/Offline listenery
     const handleOnline = () => setStatus(prev => ({ ...prev, isOnline: true }))
     const handleOffline = () => setStatus(prev => ({ ...prev, isOnline: false }))
 
-    // Notifikace změny
-    const handleNotificationChange = () => {
-      setStatus(prev => ({ ...prev, hasNotifications: Notification.permission === 'granted' }))
-    }
-
     // Inicializace
     checkStandalone()
     checkServiceWorker()
+    checkNotifications()
 
     // Event listenery
     window.addEventListener('online', handleOnline)
@@ -53,7 +66,7 @@ function PWAStatusBadge() {
     // Periodické kontroly
     const interval = setInterval(() => {
       checkStandalone()
-      handleNotificationChange()
+      checkNotifications()
     }, 5000)
 
     return () => {
@@ -64,7 +77,7 @@ function PWAStatusBadge() {
   }, [])
 
   // Zobrazit jen v development nebo standalone módu
-  const shouldShow = process.env.NODE_ENV === 'development' || status.isStandalone
+  const shouldShow = import.meta.env.DEV || status.isStandalone
 
   if (!shouldShow) return null
 
@@ -101,19 +114,21 @@ function PWAStatusBadge() {
         <span>{status.isOnline ? 'Online' : 'Offline'}</span>
       </div>
 
-      {/* Notifications Status */}
-      <div className={`px-3 py-1 rounded-full flex items-center space-x-1 text-xs font-medium shadow-lg ${
-        status.hasNotifications 
-          ? 'bg-purple-500 text-white' 
-          : 'bg-gray-500 text-white'
-      }`}>
-        {status.hasNotifications ? (
-          <Bell className="w-3 h-3" />
-        ) : (
-          <BellOff className="w-3 h-3" />
-        )}
-        <span>{status.hasNotifications ? 'Bell' : 'No Bell'}</span>
-      </div>
+      {/* Notifications Status - POUZE pokud je API dostupné */}
+      {typeof window !== 'undefined' && 'Notification' in window && (
+        <div className={`px-3 py-1 rounded-full flex items-center space-x-1 text-xs font-medium shadow-lg ${
+          status.hasNotifications 
+            ? 'bg-purple-500 text-white' 
+            : 'bg-gray-500 text-white'
+        }`}>
+          {status.hasNotifications ? (
+            <Bell className="w-3 h-3" />
+          ) : (
+            <BellOff className="w-3 h-3" />
+          )}
+          <span>{status.hasNotifications ? 'Bell' : 'No Bell'}</span>
+        </div>
+      )}
 
     </div>
   )
