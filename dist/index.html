@@ -1,20 +1,95 @@
 <!doctype html>
-<html lang="en">
+<html lang="cs">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#ec4899">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Akné Deník">
-<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    
+    <!-- Viewport pro mobil -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+    
+    <!-- PWA meta tagy -->
+    <meta name="theme-color" content="#ec4899" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Akné Deník" />
+    
+    <!-- PWA manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Preload kritických zdrojů -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    
     <title>Akné Deník - Tvoje cesta k dokonalé pleti</title>
-    <script type="module" crossorigin src="/assets/index-CdVMPRmU.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-Z9slgt9N.css">
+    
+    <!-- Debug script pro mobilní testování -->
+    <script>
+      console.log('🔍 Index.html loaded');
+      console.log('🔍 User agent:', navigator.userAgent);
+      console.log('🔍 Screen size:', window.screen.width + 'x' + window.screen.height);
+      
+      // Error handler pro nekompletní moduly
+      window.addEventListener('error', (e) => {
+        console.error('🚨 Global error:', e.error);
+        if (e.error && e.error.message && e.error.message.includes('module')) {
+          console.error('🚨 Module loading error detected!');
+        }
+      });
+    </script>
+    <script type="module" crossorigin src="/assets/index-Cntsnql0.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/vendor-Csw2ODfV.js">
+    <link rel="modulepreload" crossorigin href="/assets/router-CzIOuVrz.js">
+    <link rel="modulepreload" crossorigin href="/assets/createLucideIcon-BVK-TNov.js">
+    <link rel="modulepreload" crossorigin href="/assets/firebase-DxUWQnlV.js">
+    <link rel="modulepreload" crossorigin href="/assets/button-B9rjGe4R.js">
+    <link rel="modulepreload" crossorigin href="/assets/card-Dxmm2ME_.js">
+    <link rel="modulepreload" crossorigin href="/assets/target-DLi08z85.js">
+    <link rel="modulepreload" crossorigin href="/assets/circle-check-big-kv1Vo67G.js">
+    <link rel="modulepreload" crossorigin href="/assets/message-square-ryBRVS0s.js">
+    <link rel="modulepreload" crossorigin href="/assets/camera-CV06bDGE.js">
+    <link rel="modulepreload" crossorigin href="/assets/calendar-CfB4sLkh.js">
+    <link rel="modulepreload" crossorigin href="/assets/generateCategoricalChart-Ca6MhHvK.js">
+    <link rel="modulepreload" crossorigin href="/assets/badge-DxI1FpYi.js">
+    <link rel="modulepreload" crossorigin href="/assets/circle-alert-BrtdaKy3.js">
+    <link rel="modulepreload" crossorigin href="/assets/user-MkBF9CLd.js">
+    <link rel="modulepreload" crossorigin href="/assets/x-DTG6k3nd.js">
+    <link rel="modulepreload" crossorigin href="/assets/chart-column-DzWKztee.js">
+    <link rel="modulepreload" crossorigin href="/assets/textarea-D1VqTvES.js">
+    <link rel="modulepreload" crossorigin href="/assets/save-DU06psKo.js">
+    <link rel="modulepreload" crossorigin href="/assets/clock-DTOIgMDV.js">
+    <link rel="modulepreload" crossorigin href="/assets/shield-BB2ib7Ia.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-YaAbcchF.css">
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Loading fallback -->
+      <div style="
+        position: fixed; 
+        top: 0; left: 0; right: 0; bottom: 0; 
+        display: flex; align-items: center; justify-content: center;
+        background: linear-gradient(to bottom right, #fdf2f8, #f3e8ff);
+        font-family: system-ui, sans-serif;
+      ">
+        <div style="text-align: center;">
+          <div style="
+            width: 40px; height: 40px; 
+            border: 4px solid #ec4899; border-top: 4px solid transparent;
+            border-radius: 50%; 
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+          "></div>
+          <p style="color: #6b7280; margin: 0;">Načítání Akné Deníku...</p>
+        </div>
+      </div>
+      
+      <style>
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      </style>
+    </div>
+    
   </body>
 </html>

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Akné Deník - Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-pink-50 to-purple-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-pink-500 to-purple-600 text-white">
+        <div class="px-4 py-6">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h1 class="text-2xl font-bold">Ahoj, krásná! 👋</h1>
+                    <p class="text-pink-100">Vítej zpět ve svém deníku</p>
+                </div>
+                <div class="text-center">
+                    <div class="text-3xl font-bold">1</div>
+                    <div class="text-xs text-pink-100">DEN</div>
+                </div>
+            </div>
+
+            <!-- Progress -->
+            <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="font-medium">📱 Mobilní test</span>
+                    <span class="text-sm text-pink-100">✅ Funguje!</span>
+                </div>
+                <div class="w-full bg-white/20 rounded-full h-2">
+                    <div class="bg-white rounded-full h-2 w-1/4 transition-all duration-500"></div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="px-4 py-6 space-y-6 pb-20">
+        <!-- Status Card -->
+        <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+            <div class="px-6 py-4 bg-gradient-to-r from-pink-50 to-purple-50">
+                <div class="flex items-center space-x-3">
+                    <div class="text-2xl">📅</div>
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-900">Den 1</h2>
+                        <p class="text-sm text-gray-600">⏳ Čeká na tebe</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="px-6 py-4">
+                <div class="space-y-4">
+                    <div>
+                        <div class="flex items-center space-x-2 mb-2">
+                            <span class="text-lg">✨</span>
+                            <h3 class="font-semibold text-gray-900">Mobilní test</h3>
+                        </div>
+                        <p class="text-gray-700 leading-relaxed">
+                            🎉 Pokud vidíš tuto stránku, tvůj mobil správně načítá HTML a CSS! 
+                            Problém je s JavaScript moduly.
+                        </p>
+                    </div>
+
+                    <button onclick="testClick()" class="w-full bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 text-white font-medium py-3 text-lg rounded-md">
+                        🚀 Test JavaScript
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Debug Info -->
+        <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+            <h3 class="font-bold text-gray-900 mb-4">🔍 Debug informace</h3>
+            <div class="space-y-2 text-sm">
+                <p><strong>User Agent:</strong> <span id="userAgent" class="text-gray-600"></span></p>
+                <p><strong>Screen:</strong> <span id="screenSize" class="text-gray-600"></span></p>
+                <p><strong>Viewport:</strong> <span id="viewport" class="text-gray-600"></span></p>
+                <p><strong>Connection:</strong> <span id="connection" class="text-gray-600"></span></p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 z-50">
+        <div class="grid grid-cols-4 h-16 max-w-lg mx-auto">
+            <button class="flex flex-col items-center justify-center text-pink-600">
+                <div class="text-lg">🏠</div>
+                <span class="text-xs">Můj den</span>
+            </button>
+            <button class="flex flex-col items-center justify-center text-gray-500">
+                <div class="text-lg">📊</div>
+                <span class="text-xs">Přehled</span>
+            </button>
+            <button class="flex flex-col items-center justify-center text-gray-500">
+                <div class="text-lg">💬</div>
+                <span class="text-xs">Chat</span>
+            </button>
+            <button class="flex flex-col items-center justify-center text-gray-500">
+                <div class="text-lg">👤</div>
+                <span class="text-xs">Profil</span>
+            </button>
+        </div>
+    </nav>
+
+    <script>
+        // Test JavaScript funkcionality
+        function testClick() {
+            alert('✅ JavaScript funguje!\n\nProblém je tedy s:\n• Vite build\n• Module loading\n• Firebase\n• React routing');
+        }
+
+        // Debug informace
+        document.getElementById('userAgent').textContent = navigator.userAgent;
+        document.getElementById('screenSize').textContent = `${screen.width}x${screen.height}`;
+        document.getElementById('viewport').textContent = `${window.innerWidth}x${window.innerHeight}`;
+        document.getElementById('connection').textContent = navigator.connection ? 
+            `${navigator.connection.effectiveType} (${navigator.connection.downlink}Mbps)` : 
+            'Neznámé';
+
+        console.log('🔍 Test page loaded successfully!');
+        console.log('🔍 All basic functionality working');
+    </script>
+</body>
+</html>
