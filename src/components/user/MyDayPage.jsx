@@ -297,34 +297,29 @@ function MyDayPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Clean Header - vylepšená verze */}
-      <header className="bg-gradient-to-r from-pink-500 to-rose-500 text-white sticky top-0 z-10 shadow-lg">
+     {/* Minimalistický Header */}
+      <header className="bg-gradient-to-r from-pink-500 to-rose-500 text-white sticky top-0 z-10 shadow-sm">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="py-8">
+          <div className="py-3">
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="w-16 h-16 bg-white bg-opacity-20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
-                  <Sparkles className="w-8 h-8 text-white" />
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+                  <Sparkles className="w-4 h-4 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-3xl font-bold">
+                  <h1 className="text-lg font-semibold">
                     Ahoj, {userData?.name || 'Tereza'}! 👋
                   </h1>
-                  <div className="flex items-center space-x-4 mt-2">
-                    <p className="text-pink-100 flex items-center space-x-1">
-                      <Calendar className="w-4 h-4" />
-                      <span>Den {currentDay}</span>
-                    </p>
-                    <p className="text-pink-100 flex items-center space-x-1">
-                      <Target className="w-4 h-4" />
-                      <span>{streak} dní v řadě 🔥</span>
-                    </p>
+                  <div className="flex items-center space-x-3 text-sm text-pink-100">
+                    <span>Den {currentDay}</span>
+                    <span>•</span>
+                    <span>{streak} dní v řadě 🔥</span>
                   </div>
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-5xl font-bold text-white">{currentDay}</div>
-                <div className="text-pink-200">z 365 dní</div>
+                <div className="text-2xl font-bold text-white">{currentDay}</div>
+                <div className="text-xs text-pink-200">z 365</div>
               </div>
             </div>
           </div>
