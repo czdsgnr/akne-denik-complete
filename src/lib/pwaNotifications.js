@@ -1,9 +1,18 @@
-// 📁 src/lib/pwaNotifications.js - Kompletní PWA notifikační systém
+// 📁 src/lib/pwaNotifications.js - Kompletní PWA notifikační systém - OPRAVENO
 
 export class PWANotifications {
   constructor() {
     this.registration = null
-    this.isSupported = 'serviceWorker' in navigator && 'Notification' in window
+    // 🔧 OPRAVA: Bezpečná kontrola pro mobil
+    this.isSupported = typeof window !== 'undefined' && 
+                       'serviceWorker' in navigator && 
+                       'Notification' in window &&
+                       typeof Notification !== 'undefined'
+  }
+
+  // Pomocná funkce pro bezpečnou kontrolu
+  isNotificationAvailable() {
+    return this.isSupported && typeof Notification !== 'undefined'
   }
 
   // Inicializace PWA
@@ -27,7 +36,10 @@ export class PWANotifications {
 
   // Požádání o povolení notifikací
   async requestPermission() {
-    if (!this.isSupported) return false
+    if (!this.isNotificationAvailable()) {
+      console.warn('🔔 Notification API není dostupné')
+      return false
+    }
 
     try {
       const permission = await Notification.requestPermission()
@@ -52,24 +64,44 @@ export class PWANotifications {
 
   // Testovací notifikace
   showTestNotification() {
-    if (Notification.permission !== 'granted') return
+    if (!this.isNotificationAvailable()) {
+      console.warn('🔔 Notification API není dostupné')
+      return
+    }
 
-    const notification = new Notification('Akné Deník', {
-      body: 'Notifikace jsou nyní aktivní! 🎉',
-      icon: '/favicon.ico',
-      badge: '/favicon.ico',
-      tag: 'test-notification',
-      requireInteraction: false,
-      vibrate: [200, 100, 200] // 📳 HAPTIKA
-    })
+    if (Notification.permission !== 'granted') {
+      console.warn('🔔 Notifikace nejsou povoleny')
+      return
+    }
 
-    // Auto close po 5 sekundách
-    setTimeout(() => notification.close(), 5000)
+    try {
+      const notification = new Notification('Akné Deník', {
+        body: 'Notifikace jsou nyní aktivní! 🎉',
+        icon: '/favicon.ico',
+        badge: '/favicon.ico',
+        tag: 'test-notification',
+        requireInteraction: false,
+        vibrate: [200, 100, 200] // 📳 HAPTIKA
+      })
+
+      // Auto close po 5 sekundách
+      setTimeout(() => notification.close(), 5000)
+    } catch (error) {
+      console.error('❌ Chyba při zobrazení notifikace:', error)
+    }
   }
 
   // Naplánování denního připomenutí
   async scheduleDailyReminder(hour = 9, minute = 0) {
-    if (Notification.permission !== 'granted') return false
+    if (!this.isNotificationAvailable()) {
+      console.warn('🔔 Notification API není dostupné')
+      return false
+    }
+
+    if (Notification.permission !== 'granted') {
+      console.warn('🔔 Notifikace nejsou povoleny')
+      return false
+    }
 
     const now = new Date()
     const reminderTime = new Date()
@@ -94,7 +126,15 @@ export class PWANotifications {
 
   // Denní připomenutí
   showDailyReminder() {
-    if (Notification.permission !== 'granted') return
+    if (!this.isNotificationAvailable()) {
+      console.warn('🔔 Notification API není dostupné')
+      return
+    }
+
+    if (Notification.permission !== 'granted') {
+      console.warn('🔔 Notifikace nejsou povoleny')
+      return
+    }
 
     const messages = [
       'Čas na tvůj denní úkol! 💖',
@@ -106,68 +146,96 @@ export class PWANotifications {
 
     const randomMessage = messages[Math.floor(Math.random() * messages.length)]
 
-    const notification = new Notification('Akné Deník', {
-      body: randomMessage,
-      icon: '/favicon.ico',
-      badge: '/favicon.ico',
-      tag: 'daily-reminder',
-      requireInteraction: true,
-      vibrate: [400, 200, 400, 200, 400], // 📳 Silnější haptika pro připomenutí
-      actions: [
-        {
-          action: 'open',
-          title: 'Otevřít aplikaci'
-        },
-        {
-          action: 'later',
-          title: 'Připomenout za hodinu'
-        }
-      ]
-    })
+    try {
+      const notification = new Notification('Akné Deník', {
+        body: randomMessage,
+        icon: '/favicon.ico',
+        badge: '/favicon.ico',
+        tag: 'daily-reminder',
+        requireInteraction: true,
+        vibrate: [400, 200, 400, 200, 400], // 📳 Silnější haptika pro připomenutí
+        actions: [
+          {
+            action: 'open',
+            title: 'Otevřít aplikaci'
+          },
+          {
+            action: 'later',
+            title: 'Připomenout za hodinu'
+          }
+        ]
+      })
 
-    notification.onclick = () => {
-      window.focus()
-      notification.close()
+      notification.onclick = () => {
+        window.focus()
+        notification.close()
+      }
+    } catch (error) {
+      console.error('❌ Chyba při zobrazení denního připomenutí:', error)
     }
   }
 
   // Foto den připomenutí
   showPhotoReminder(day) {
-    if (Notification.permission !== 'granted') return
+    if (!this.isNotificationAvailable()) {
+      console.warn('🔔 Notification API není dostupné')
+      return
+    }
 
-    const notification = new Notification('Akné Deník - Foto den! 📸', {
-      body: `Dnes je den ${day} - čas na fotku pokroku! 📷✨`,
-      icon: '/favicon.ico',
-      badge: '/favicon.ico',
-      tag: 'photo-reminder',
-      requireInteraction: true,
-      vibrate: [100, 50, 100, 50, 100, 50, 300], // 📳 Rytmická haptika pro foto
-      actions: [
-        {
-          action: 'photo',
-          title: 'Pořídit foto'
-        },
-        {
-          action: 'later',
-          title: 'Později'
-        }
-      ]
-    })
+    if (Notification.permission !== 'granted') {
+      console.warn('🔔 Notifikace nejsou povoleny')
+      return
+    }
+
+    try {
+      const notification = new Notification('Akné Deník - Foto den! 📸', {
+        body: `Dnes je den ${day} - čas na fotku pokroku! 📷✨`,
+        icon: '/favicon.ico',
+        badge: '/favicon.ico',
+        tag: 'photo-reminder',
+        requireInteraction: true,
+        vibrate: [100, 50, 100, 50, 100, 50, 300], // 📳 Rytmická haptika pro foto
+        actions: [
+          {
+            action: 'photo',
+            title: 'Pořídit foto'
+          },
+          {
+            action: 'later',
+            title: 'Později'
+          }
+        ]
+      })
+    } catch (error) {
+      console.error('❌ Chyba při zobrazení foto připomenutí:', error)
+    }
   }
 
   // Progress update notifikace
   showProgressNotification(completedDays, totalDays) {
-    if (Notification.permission !== 'granted') return
+    if (!this.isNotificationAvailable()) {
+      console.warn('🔔 Notification API není dostupné')
+      return
+    }
+
+    if (Notification.permission !== 'granted') {
+      console.warn('🔔 Notifikace nejsou povoleny')
+      return
+    }
 
     const percentage = Math.round((completedDays / totalDays) * 100)
     
-    const notification = new Notification('Akné Deník - Pokrok! 🎉', {
-      body: `Dokončil jsi už ${completedDays} dnů (${percentage}%)! Pokračuj dál! 💪`,
-      icon: '/favicon.ico',
-      badge: '/favicon.ico',
-      tag: 'progress-update',
-      vibrate: [200, 100, 200, 100, 400], // 📳 Slavnostní haptika
-    })
+    try {
+      const notification = new Notification('Akné Deník - Pokrok! 🎉', {
+        body: `Dokončil jsi už ${completedDays} dnů (${percentage}%)! Pokračuj dál! 💪`,
+        icon: '/favicon.ico',
+        badge: '/favicon.ico',
+        tag: 'progress-update',
+        vibrate: [200, 100, 200, 100, 400], // 📳 Slavnostní haptika
+      })
+    } catch (error) {
+      console.error('❌ Chyba při zobrazení pokrok notifikace:', error)
+    }
   }
 
   // Instalace PWA prompt - vylepšená verze
