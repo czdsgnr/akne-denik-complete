@@ -89,6 +89,7 @@ function MyDayPage() {
   const [photoPreview, setPhotoPreview] = useState(null)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const photoInputRef = useRef(null)
+  const [errorMessage, setErrorMessage] = useState('')
 
   useEffect(() => {
     // Vždy scroll na začátek při načtení stránky
@@ -98,20 +99,43 @@ function MyDayPage() {
       if (!user) return
       
       try {
+        console.log('🔄 Loading user data...')
+        
         // Načtení aktuálního dne uživatele
         const userDoc = await getDoc(doc(db, 'users', user.uid))
+        if (!userDoc.exists()) {
+          console.error('❌ User document not found!')
+          return
+        }
+        
         const userInfo = userDoc.data()
         const day = userInfo?.currentDay || 1
+        
+        console.log('✅ User data loaded:', { day, userInfo })
         
         setCurrentDay(day)
         setUserData(userInfo)
 
         // Načtení denního obsahu
+        console.log(`🔄 Loading daily content for day ${day}...`)
         const contentDoc = await getDoc(doc(db, 'dailyContent', `day-${day}`))
-        const contentData = contentDoc.exists() ? contentDoc.data() : null
-        setCurrentDayContent(contentData)
+        
+        if (contentDoc.exists()) {
+          const contentData = contentDoc.data()
+          console.log('✅ Daily content loaded:', contentData)
+          setCurrentDayContent(contentData)
+        } else {
+          console.warn(`⚠️ No content found for day-${day}`)
+          // Fallback obsah
+          setCurrentDayContent({
+            motivation: `Vítej v dni ${day}! Dnes budeš pokračovat ve své cestě za krásnou pletí! 💖`,
+            task: `🎯 DEN ${day} - POKRAČUJ VE SVÉ CESTĚ!\n\n📌 VZPOMEŇ SI:\nJaký pokrok jsi už udělala?\n\n💪 ÚKOL:\nDnes se zaměř na pravidelnost své rutiny.\n⭐ Udělej si čas jen pro sebe!`,
+            isPhotoDay: day % 7 === 1 // Každý týden foto den
+          })
+        }
 
         // Načtení uživatelských logů
+        console.log('🔄 Loading user logs...')
         const logsQuery = query(
           collection(db, 'userLogs'),
           where('userId', '==', user.uid)
@@ -122,6 +146,7 @@ function MyDayPage() {
           const data = doc.data()
           logs[data.day] = data
         })
+        console.log('✅ User logs loaded:', logs)
         setUserLogs(logs)
 
         // Kontrola jestli už dnes vyplnil záznam (podle dnešního data)
@@ -144,10 +169,12 @@ function MyDayPage() {
           }
         })
         
+        console.log('✅ Today completed check:', todayLogExists)
         setTodayCompleted(todayLogExists)
 
       } catch (error) {
-        console.error('Chyba při načítání dat:', error)
+        console.error('❌ Error loading data:', error)
+        setErrorMessage('Chyba při načítání dat. Zkus obnovit stránku. 🔄')
       } finally {
         setLoading(false)
       }
@@ -158,15 +185,19 @@ function MyDayPage() {
 
   const handleMoodSelect = (mood) => {
     setDailyLog(prev => ({ ...prev, mood }))
+    setErrorMessage('') // Vymaž error při výběru
   }
 
   const handleSkinRating = (rating) => {
     setDailyLog(prev => ({ ...prev, skinRating: rating }))
+    setErrorMessage('') // Vymaž error při výběru
   }
 
   const handlePhotoSelect = (e) => {
     const file = e.target.files[0]
     if (!file) return
+
+    setErrorMessage('') // Vymaž předchozí chyby
 
     try {
       validatePhotoFile(file)
@@ -180,17 +211,19 @@ function MyDayPage() {
       }
       reader.readAsDataURL(file)
     } catch (error) {
-      alert(error.message)
+      setErrorMessage(error.message + ' Zkus prosím vybrat jinou fotografii. 📸')
     }
   }
 
   const handlePhotoUpload = async () => {
     if (!photoFile) {
-      alert('Nejdřív vyber fotografii')
+      setErrorMessage('Nejdřív vyber fotografii pomocí tlačítka "Vybrat foto" 📸')
       return
     }
 
     setUploadingPhoto(true)
+    setErrorMessage('') // Vymaž předchozí chyby
+    
     try {
       const photoUrl = await uploadPhotoToStorage(
         photoFile, 
@@ -205,25 +238,30 @@ function MyDayPage() {
         photos: [{ url: photoUrl, type: 'progress' }] 
       }))
       
-      alert('Fotka byla úspěšně nahrána! 📸 Teď můžeš dokončit den.')
+      // Úspěšná zpráva se zobrazí jen krátce
+      setErrorMessage('')
       
     } catch (error) {
       console.error('Chyba při nahrávání fotky:', error)
-      alert('Chyba při nahrávání fotky: ' + error.message)
+      setErrorMessage('Chyba při nahrávání fotky: ' + error.message + ' Zkus to prosím znovu. 🔄')
     } finally {
       setUploadingPhoto(false)
     }
   }
 
   const handleCompleteDay = async () => {
+    // Vymaž předchozí chyby
+    setErrorMessage('')
+    
+    // Validace
     if (!dailyLog.mood || !dailyLog.skinRating) {
-      alert('Prosím, vyplň náladu a hodnocení pleti před dokončením dne.')
+      setErrorMessage('Prosím, vyplň náladu a hodnocení pleti před dokončením dne. Děláš to přece pro sebe! 💖')
       return
     }
 
     // Kontrola povinné fotky na foto dnech
     if (isPhotoDay && (!dailyLog.photos || dailyLog.photos.length === 0)) {
-      alert('Dnes je foto den! Prosím nahraj fotografii svého obličeje pro sledování pokroku.')
+      setErrorMessage('Dnes je foto den! Nahraj prosím fotografii svého obličeje - chceš přece vidět svůj pokrok! 📸')
       return
     }
 
@@ -256,7 +294,7 @@ function MyDayPage() {
 
     } catch (error) {
       console.error('Chyba při ukládání:', error)
-      alert('Chyba při ukládání dat')
+      setErrorMessage('Ups! Něco se nepovedlo. Zkus to prosím znovu. 🔄')
     }
   }
 
@@ -275,6 +313,11 @@ function MyDayPage() {
   const completedDaysCount = Object.keys(userLogs).length
   const progressPercentage = Math.round((completedDaysCount / 365) * 100)
   const streak = calculateStreak(userLogs, currentDay)
+
+  // Validace formuláře
+  const isFormValid = dailyLog.mood > 0 && 
+                     dailyLog.skinRating > 0 && 
+                     (!isPhotoDay || (dailyLog.photos && dailyLog.photos.length > 0))
 
   const moods = [
     { value: 1, emoji: '😞', label: 'Špatná' },
@@ -297,7 +340,7 @@ function MyDayPage() {
 
   return (
     <div className="min-h-screen bg-white">
-     {/* Minimalistický Header */}
+      {/* Minimalistický Header */}
       <header className="bg-gradient-to-r from-pink-500 to-rose-500 text-white sticky top-0 z-10 shadow-sm">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="py-3">
@@ -443,14 +486,7 @@ function MyDayPage() {
             <div className="prose max-w-none">
               <pre className="whitespace-pre-wrap font-sans text-gray-700 leading-relaxed text-sm">
                 {currentDayContent?.task || 
-                 `🎯 DEN ${currentDay} - DŮVĚŘUJ PROCESU!
-
-📌 VZPOMEŇ SI:
-Kdy jsi naposledy dostala kompliment na svou pleť?
-
-💪 ÚKOL:
-Dnes se podívej do zrcadla a najdi 3 věci, které se ti na své pleti líbí.
-⭐ Napiš si je do poznámky a usmej se na sebe!`}
+                 `🎯 DEN ${currentDay} - DŮVĚŘUJ PROCESU!\n\n📌 VZPOMEŇ SI:\nKdy jsi naposledy dostala kompliment na svou pleť?\n\n💪 ÚKOL:\nDnes se podívej do zrcadla a najdi 3 věci, které se ti na své pleti líbí.\n⭐ Napiš si je do poznámky a usmej se na sebe!`}
               </pre>
             </div>
           </CardContent>
@@ -465,26 +501,26 @@ Dnes se podívej do zrcadla a najdi 3 věci, které se ti na své pleti líbí.
                 <span>Jak se dnes cítíš?</span>
               </h2>
               
-              {/* Celková nálada */}
+              {/* Celková nálada - RESPONSIVE */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-3">
                   Celková nálada
                 </label>
-                <div className="grid grid-cols-5 gap-2">
+                <div className="grid grid-cols-5 gap-1 sm:gap-2">
                   {moods.map((mood) => (
                     <button
                       key={mood.value}
                       onClick={() => handleMoodSelect(mood.value)}
                       className={`
-                        p-3 rounded-lg border-2 transition-all duration-200 text-center
+                        p-2 sm:p-3 rounded-lg border-2 transition-all duration-200 text-center
                         ${dailyLog.mood === mood.value
                           ? 'border-pink-500 bg-pink-50 shadow-md transform scale-105'
                           : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                         }
                       `}
                     >
-                      <div className="text-2xl mb-1">{mood.emoji}</div>
-                      <div className="text-xs text-gray-600">{mood.label}</div>
+                      <div className="text-lg sm:text-2xl mb-1">{mood.emoji}</div>
+                      <div className="text-xs text-gray-600 leading-tight">{mood.label}</div>
                     </button>
                   ))}
                 </div>
@@ -566,6 +602,7 @@ Dnes se podívej do zrcadla a najdi 3 věci, které se ti na své pleti líbí.
                               setPhotoFile(null)
                               setPhotoPreview(null)
                               setDailyLog(prev => ({ ...prev, photos: [] }))
+                              setErrorMessage('') // Vymaž i error zprávy
                             }}
                             className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 shadow-lg"
                           >
@@ -621,16 +658,46 @@ Dnes se podívej do zrcadla a najdi 3 věci, které se ti na své pleti líbí.
                 </div>
               )}
 
-              {/* Dokončit den */}
+              {/* Error zpráva */}
+              {errorMessage && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <div className="flex items-start space-x-3">
+                    <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-red-600 text-sm">!</span>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-red-800 font-medium text-sm">
+                        {errorMessage}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setErrorMessage('')}
+                      className="text-red-400 hover:text-red-600 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Dokončit den - SMART VALIDACE */}
               <Button
                 onClick={handleCompleteDay}
-                className="w-full py-3 text-lg font-semibold rounded-lg bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:from-pink-600 hover:to-rose-600 transform hover:scale-105 transition-all duration-200"
+                disabled={!isFormValid}
+                className={`
+                  w-full py-3 text-lg font-semibold rounded-lg transition-all duration-200
+                  ${isFormValid 
+                    ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:from-pink-600 hover:to-rose-600 transform hover:scale-105 shadow-lg'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }
+                `}
               >
                 <span className="flex items-center justify-center space-x-2">
                   <Target className="w-5 h-5" />
                   <span>
                     {isPhotoDay ? 'Dokončit den + foto' : 'Dokončit den'}
                   </span>
+                  {!isFormValid && <span className="text-xs">(vyplň všechno)</span>}
                 </span>
               </Button>
               
