@@ -1,9 +1,9 @@
-// 🔧 GLOBÁLNÍ POLYFILL PRO NOTIFICATION API (iOS FIX) - MUSÍ BÝT PRVNÍ!
+// 🔧 GLOBÁLNÍ POLYFILL PRO NOTIFICATION API (iOS FIX) - OPRAVENÝ!
 if (typeof window !== 'undefined' && !('Notification' in window)) {
   console.warn('🔔 Notification API není podporováno - používám polyfill')
   
   // Vytvoř fake Notification class
-  window.Notification = class FakeNotification {
+  class FakeNotification {
     constructor(title, options = {}) {
       console.log(`🔔 Fake notification: ${title}`, options)
       this.title = title
@@ -18,18 +18,22 @@ if (typeof window !== 'undefined' && !('Notification' in window)) {
       console.log('🔔 Fake notification closed')
     }
     
-    static get permission() {
-      return 'denied'
-    }
-    
     static async requestPermission() {
       console.log('🔔 Fake notification permission request')
       return 'denied'
     }
   }
   
-  // Přidej také fake permission property
-  window.Notification.permission = 'denied'
+  // 🔧 OPRAVA: Definuj permission jako configurable property
+  Object.defineProperty(FakeNotification, 'permission', {
+    value: 'denied',
+    writable: true,
+    enumerable: true,
+    configurable: true
+  })
+  
+  // Přiřaď do window
+  window.Notification = FakeNotification
 }
 
 // 🔧 BEZPEČNÁ KONTROLA SERVICE WORKER
@@ -37,16 +41,27 @@ if (typeof window !== 'undefined' && !('serviceWorker' in navigator)) {
   console.warn('🔧 Service Worker není podporován - používám polyfill')
   
   // Fake service worker pro fallback
-  navigator.serviceWorker = {
-    register: () => Promise.reject(new Error('Service Worker not supported')),
-    getRegistration: () => Promise.resolve(null)
-  }
+  Object.defineProperty(navigator, 'serviceWorker', {
+    value: {
+      register: () => Promise.reject(new Error('Service Worker not supported')),
+      getRegistration: () => Promise.resolve(null)
+    },
+    writable: true,
+    enumerable: true,
+    configurable: true
+  })
 }
 
 // 🔧 BEZPEČNÁ KONTROLA VIBRATE API
 if (typeof window !== 'undefined' && !('vibrate' in navigator)) {
   console.warn('📳 Vibrate API není podporováno - používám polyfill')
-  navigator.vibrate = () => false
+  
+  Object.defineProperty(navigator, 'vibrate', {
+    value: () => false,
+    writable: true,
+    enumerable: true,
+    configurable: true
+  })
 }
 
 // 📱 MOBILE DEBUG INFO
