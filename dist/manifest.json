@@ -1,0 +1,43 @@
+// =====================================
+
+// 📁 public/manifest.json - PWA Manifest
+{
+  "name": "Akné Deník - Péče o pleť",
+  "short_name": "Akné Deník",
+  "description": "Celoroční program péče o pleť s akné",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ec4899",
+  "orientation": "portrait",
+  "scope": "/",
+  "lang": "cs",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png", 
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["health", "lifestyle", "beauty"],
+  "screenshots": [
+    {
+      "src": "/screenshot-mobile.png",
+      "sizes": "640x1136",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ]
+}
