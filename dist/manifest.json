@@ -1,40 +1,21 @@
 {
-  "name": "Akné Deník - Péče o pleť",
+  "name": "Akné Deník",
   "short_name": "Akné Deník",
-  "description": "Celoroční program péče o pleť s akné",
+  "description": "Webová aplikace pro péči o pleť s akné",
   "start_url": "/",
-  "display": "standalone",
+  "display": "browser",
   "background_color": "#ffffff",
   "theme_color": "#ec4899",
-  "orientation": "portrait",
-  "scope": "/",
-  "lang": "cs",
   "icons": [
     {
-      "src": "/favicon.ico",
-      "sizes": "48x48",
-      "type": "image/x-icon"
-    },
-    {
-      "src": "/icon-192.png",
+      "src": "/icon-192x192.png",
       "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     },
     {
-      "src": "/icon-512.png", 
+      "src": "/icon-512x512.png", 
       "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
-  ],
-  "categories": ["health", "lifestyle", "beauty"],
-  "screenshots": [
-    {
-      "src": "/screenshot-mobile.png",
-      "sizes": "640x1136",
-      "type": "image/png",
-      "form_factor": "narrow"
+      "type": "image/png"
     }
   ]
 }
