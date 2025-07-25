@@ -51,10 +51,24 @@ function DailyTaskPage() {
       try {
         setDebugInfo('Načítání dat...')
         
-        // Načtení obsahu dne
+        // 🔥 OPRAVA: Priorita DB obsahu před fallback
+        console.log(`🔍 Načítání obsahu dne ${day} z databáze...`)
         const contentDoc = await getDoc(doc(db, 'dailyContent', `day-${day}`))
+        
         if (contentDoc.exists()) {
-          setDayContent(contentDoc.data())
+          const contentData = contentDoc.data()
+          console.log('✅ Obsah dne načten z DB:', contentData)
+          setDayContent(contentData)
+        } else {
+          console.warn(`⚠️ Obsah pro den ${day} nebyl nalezen v DB - používám fallback`)
+          // Fallback pouze pokud není v DB
+          setDayContent({
+            day: day,
+            motivation: `Vítej v dni ${day}! Pokračuj ve své cestě za krásnou pletí! 💖`,
+            task: `🎯 DEN ${day} - POKRAČUJ VE SVÉ CESTĚ!\n\n📌 VZPOMEŇ SI:\nJaký pokrok jsi už udělala?\n\n💪 ÚKOL:\nDnes se zaměř na pravidelnost své rutiny.\n⭐ Udělej si čas jen pro sebe!`,
+            isPhotoDay: day % 7 === 1,
+            isDualPhotoDay: day % 14 === 0
+          })
         }
 
         // Načtení uživatelského logu pro tento den
@@ -192,7 +206,7 @@ function DailyTaskPage() {
         setUserLog({ id: newLogRef.id, userId: user.uid, day, ...finalLogData })
       }
 
-      // ✅ AKTUALIZACE POKROKU UŽIVATELE
+      // 🔥 OPRAVA: AKTUALIZACE POKROKU BEZ ZMĚNY currentDay
       const userDocRef = doc(db, 'users', user.uid)
       const userDoc = await getDoc(userDocRef)
       const userData = userDoc.data()
@@ -202,8 +216,8 @@ function DailyTaskPage() {
         completedDays.push(day)
         await updateDoc(userDocRef, {
           completedDays,
-          lastActivity: new Date(),
-          currentDay: Math.max(userData.currentDay || 1, day + 1)
+          lastActivity: new Date()
+          // 🚫 currentDay: Math.max(userData.currentDay || 1, day + 1)  <- TOTO ODSTRANĚNO!
         })
       }
 
@@ -254,10 +268,10 @@ function DailyTaskPage() {
 
   return (
     <div className="min-h-screen">
-      {/* Header */}
+      {/* 🔥 ZMENŠENÝ Header - z h-16 na h-14 */}
       <header className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+          <div className="flex items-center justify-between h-14">
             <div className="flex items-center space-x-3">
               <Button
                 variant="ghost"
@@ -289,7 +303,7 @@ function DailyTaskPage() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         
         {/* Debug info */}
         {debugInfo && (
@@ -317,9 +331,9 @@ function DailyTaskPage() {
           </div>
         )}
 
-        {/* Denní motivace */}
+        {/* 🔥 ZMENŠENÁ Denní motivace - z p-6 na p-4 */}
         <Card className="border-0 shadow-lg bg-gradient-to-br from-pink-50 to-purple-50">
-          <CardHeader className="flex flex-row items-center space-x-3">
+          <CardHeader className="flex flex-row items-center space-x-3 pb-3">
             <div className="w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center">
               <Heart className="w-5 h-5 text-pink-600" />
             </div>
@@ -328,16 +342,16 @@ function DailyTaskPage() {
               <p className="text-sm text-pink-700">Tvá dnešní inspirace</p>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0">
             <blockquote className="text-lg font-medium text-pink-800 italic">
               "{dayContent.motivation}"
             </blockquote>
           </CardContent>
         </Card>
 
-        {/* Denní úkol */}
+        {/* 🔥 ZMENŠENÝ Denní úkol - z p-6 na p-4 */}
         <Card className="border-0 shadow-lg">
-          <CardHeader className="flex flex-row items-center space-x-3">
+          <CardHeader className="flex flex-row items-center space-x-3 pb-3">
             <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
               <Target className="w-5 h-5 text-blue-600" />
             </div>
@@ -346,9 +360,9 @@ function DailyTaskPage() {
               <p className="text-sm text-gray-600">Co tě dnes čeká</p>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0">
             <div className="prose max-w-none">
-              <div className="bg-gray-50 p-6 rounded-lg">
+              <div className="bg-gray-50 p-4 rounded-lg">
                 <pre className="whitespace-pre-wrap font-sans text-gray-800 leading-relaxed">
                   {dayContent.task}
                 </pre>
@@ -357,17 +371,17 @@ function DailyTaskPage() {
 
             {/* Foto instrukce */}
             {isPhotoDay && (
-              <div className="mt-6 p-4 bg-pink-50 border border-pink-200 rounded-lg">
-                <div className="flex items-center space-x-3 mb-3">
+              <div className="mt-4 p-3 bg-pink-50 border border-pink-200 rounded-lg">
+                <div className="flex items-center space-x-3 mb-2">
                   <Camera className="w-5 h-5 text-pink-600" />
                   <h3 className="font-semibold text-pink-900">
-                    🧪 TEST: {isDualPhotoDay ? 'Pořiď 2 fotky' : 'Pořiď fotku pokroku'}
+                    {isDualPhotoDay ? 'Pořiď 2 fotky (zepředu + z boku)' : 'Pořiď fotku pokroku'}
                   </h3>
                 </div>
                 <p className="text-sm text-pink-700">
                   {isDualPhotoDay 
-                    ? 'Testujeme upload 2 fotek - zepředu a z boku (nová cesta photos_v2/)'
-                    : 'Testujeme upload 1 fotky (nová cesta photos_v2/)'
+                    ? 'Dnes je čas na podrobnou fotodokumentaci - udělej si fotky z předu i z boku pro lepší sledování pokroku.'
+                    : 'Dnes je foto den! Poříď si selfie obličeje pro sledování pokroku tvé pleti.'
                   }
                 </p>
               </div>
@@ -375,22 +389,22 @@ function DailyTaskPage() {
           </CardContent>
         </Card>
 
-        {/* Denní formulář - Bottom Sheet Trigger */}
+        {/* 🔥 ZMENŠENÝ Denní formulář - z p-6 na p-4 */}
         <Card className="border-0 shadow-lg">
-          <CardHeader className="flex flex-row items-center space-x-3">
+          <CardHeader className="flex flex-row items-center space-x-3 pb-3">
             <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
               <MessageSquare className="w-5 h-5 text-purple-600" />
             </div>
             <div>
               <CardTitle>Tvůj záznam</CardTitle>
               <p className="text-sm text-gray-600">
-                {isCompleted ? 'Upravit záznam' : 'Zaznamenat pokrok + TEST FOTO'}
+                {isCompleted ? 'Upravit záznam' : 'Zaznamenat pokrok'}
               </p>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0">
             {isCompleted ? (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">Dokončeno</span>
                   <div className="flex items-center space-x-1">
@@ -433,7 +447,7 @@ function DailyTaskPage() {
                 ) : (
                   <>
                     <Save className="w-4 h-4 mr-2" />
-                    🧪 TEST Záznam + Foto
+                    Záznam + Foto
                   </>
                 )}
               </Button>
@@ -446,14 +460,14 @@ function DailyTaskPage() {
       <BottomSheet
         isOpen={showLogForm}
         onClose={() => setShowLogForm(false)}
-        title={`🧪 TEST Den ${day} - Záznam pokroku + Foto Upload`}
+        title={`Den ${day} - Záznam pokroku`}
       >
         <DailyLogForm
           dayNumber={day}
           onSubmit={handleSaveLog}
           onCancel={() => setShowLogForm(false)}
-          isPhotoDay={isPhotoDay} // ✅ Zapnout fotky pro test
-          isDualPhotoDay={isDualPhotoDay} // ✅ Zapnout fotky pro test
+          isPhotoDay={isPhotoDay}
+          isDualPhotoDay={isDualPhotoDay}
           existingEntry={userLog}
         />
       </BottomSheet>
