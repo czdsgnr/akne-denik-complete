@@ -5,7 +5,6 @@ import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { 
   Camera, 
-  ArrowLeft, 
   Calendar, 
   Search,
   Filter,
@@ -25,11 +24,12 @@ import {
   Clock,
   Target,
   Zap,
-  Smile
+  Smile,
+  Loader2
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { db } from '../../lib/firebase'
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore'
+import { collection, query, where, getDocs } from 'firebase/firestore'
 
 function PhotoGalleryPage() {
   const { user } = useAuth()
@@ -55,11 +55,10 @@ function PhotoGalleryPage() {
       try {
         console.log('📸 Načítání foto logů pro uživatele:', user.uid)
         
-        // Načtení všech logů s fotkami
+        // Zjednodušené načtení logů bez orderBy (aby se předešlo problémům s indexy)
         const logsQuery = query(
           collection(db, 'userLogs'),
-          where('userId', '==', user.uid),
-          orderBy('day', 'asc')
+          where('userId', '==', user.uid)
         )
         
         const logsSnapshot = await getDocs(logsQuery)
@@ -73,12 +72,27 @@ function PhotoGalleryPage() {
           }
         })
         
+        // Seřazení na klientu
+        logs.sort((a, b) => a.day - b.day)
+        
         console.log('📷 Načteno foto logů:', logs.length)
+        console.log('📸 Logy s fotkami:', logs.filter(log => log.photos && log.photos.length > 0).length)
+        
+        // Debug: výpis prvních několika logů s fotkami
+        const logsWithPhotos = logs.filter(log => log.photos && log.photos.length > 0)
+        if (logsWithPhotos.length > 0) {
+          console.log('🖼️ Ukázka logů s fotkami:', logsWithPhotos.slice(0, 3).map(log => ({
+            day: log.day,
+            photosCount: log.photos.length,
+            photoUrls: log.photos.map(p => p.url)
+          })))
+        }
+        
         setPhotoLogs(logs)
         setFilteredLogs(logs)
         
       } catch (error) {
-        console.error('Chyba při načítání foto logů:', error)
+        console.error('❌ Chyba při načítání foto logů:', error)
       } finally {
         setLoading(false)
       }
@@ -140,7 +154,7 @@ function PhotoGalleryPage() {
   const renderGridView = () => (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
       {filteredLogs.map((log) => (
-        <Card key={log.id} className="border-0 shadow-md hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+        <Card key={log.id} className="border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 transform hover:scale-105">
           <CardContent className="p-0">
             {/* Foto */}
             <div className="relative aspect-square">
@@ -207,7 +221,7 @@ function PhotoGalleryPage() {
   const renderTimelineView = () => (
     <div className="space-y-6">
       {filteredLogs.map((log, index) => (
-        <Card key={log.id} className="border-0 shadow-lg">
+        <Card key={log.id} className="border border-gray-100 shadow-sm">
           <CardContent className="p-6">
             <div className="flex flex-col lg:flex-row lg:space-x-6">
               
@@ -296,10 +310,10 @@ function PhotoGalleryPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-pink-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-lg font-medium text-gray-700">Načítání tvých fotek...</p>
+          <Loader2 className="w-8 h-8 text-pink-500 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Načítání tvých fotek...</p>
           <p className="text-sm text-gray-500 mt-1">Připravujeme galerii tvého pokroku</p>
         </div>
       </div>
@@ -309,70 +323,77 @@ function PhotoGalleryPage() {
   const comparisonPhotos = getComparisonPhotos()
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50">
+    <div className="min-h-screen bg-white">
       
-      {/* Header */}
-      <header className="bg-gradient-to-r from-purple-500 to-pink-500 text-white sticky top-0 z-40 shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="py-4">
-            <div className="flex items-center justify-between">
-              
-              <div className="flex items-center space-x-3">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate(-1)}
-                  className="text-white hover:bg-white/20 p-2 rounded-lg"
-                >
-                  <ArrowLeft className="w-5 h-5" />
-                </Button>
-                
-                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                  <Camera className="w-5 h-5 text-white" />
-                </div>
-                
-                <div>
-                  <h1 className="text-xl font-bold">Fotodokumentace pokroku</h1>
-                  <p className="text-purple-100 text-sm">
-                    {filteredLogs.length} fotek ze tvé cesty
-                  </p>
-                </div>
+      {/* Header - stejný styl jako ostatní stránky */}
+      <header className="bg-white border-b border-gray-100 sticky top-0 z-40 shadow-sm">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center h-16">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-r from-pink-500 to-purple-500 rounded-xl flex items-center justify-center shadow-lg">
+                <Camera className="w-5 h-5 text-white" />
               </div>
-              
-              {/* Toolbar */}
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setViewMode(viewMode === 'grid' ? 'timeline' : 'grid')}
-                  className="text-white hover:bg-white/20"
-                >
-                  {viewMode === 'grid' ? <List className="w-4 h-4" /> : <Grid3X3 className="w-4 h-4" />}
-                </Button>
-                
-                {comparisonPhotos && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowComparison(!showComparison)}
-                    className="text-white hover:bg-white/20"
-                  >
-                    <TrendingUp className="w-4 h-4" />
-                  </Button>
-                )}
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">Fotodokumentace pokroku</h1>
+                <p className="text-sm text-gray-500">
+                  {filteredLogs.length === 0 
+                    ? 'Připrav se na svou cestu!' 
+                    : `${filteredLogs.length} fotek ze tvé cesty`
+                  }
+                </p>
               </div>
-              
             </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        
+        {/* Toolbar - přesunuté z headeru */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Galerie pokroku</h2>
+            <p className="text-sm text-gray-500">Sleduj svůj pokrok v čase</p>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setViewMode(viewMode === 'grid' ? 'timeline' : 'grid')}
+              className="flex items-center space-x-2"
+            >
+              {viewMode === 'grid' ? (
+                <>
+                  <List className="w-4 h-4" />
+                  <span className="hidden sm:inline">Časová osa</span>
+                </>
+              ) : (
+                <>
+                  <Grid3X3 className="w-4 h-4" />
+                  <span className="hidden sm:inline">Mřížka</span>
+                </>
+              )}
+            </Button>
+            
+            {comparisonPhotos && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowComparison(!showComparison)}
+                className="flex items-center space-x-2"
+              >
+                <TrendingUp className="w-4 h-4" />
+                <span className="hidden sm:inline">Porovnání</span>
+              </Button>
+            )}
+          </div>
+        </div>
         
         {/* Comparison Section */}
         {showComparison && comparisonPhotos && (
-          <Card className="border-0 shadow-xl bg-gradient-to-r from-green-50 to-blue-50">
+          <Card className="border border-gray-100 shadow-sm bg-white">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <TrendingUp className="w-6 h-6 text-green-600" />
@@ -452,7 +473,7 @@ function PhotoGalleryPage() {
               placeholder="Hledat v poznámkách nebo dnech..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 border-white shadow-md"
+              className="pl-10 border-gray-200 shadow-sm focus:ring-2 focus:ring-pink-500 focus:border-transparent"
             />
           </div>
           
@@ -461,7 +482,7 @@ function PhotoGalleryPage() {
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              className="px-3 py-2 border border-gray-200 rounded-lg shadow-md bg-white focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+              className="px-3 py-2 border border-gray-200 rounded-lg shadow-sm bg-white focus:ring-2 focus:ring-pink-500 focus:border-transparent"
             >
               <option value="all">Všechny fotky</option>
               <option value="photo_days">Pouze foto dny</option>
@@ -474,26 +495,26 @@ function PhotoGalleryPage() {
         {/* Stats Bar */}
         {filteredLogs.length > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white rounded-xl p-4 text-center shadow-md">
+            <div className="bg-white border border-gray-100 rounded-xl p-4 text-center shadow-sm">
               <p className="text-2xl font-bold text-pink-600">{filteredLogs.length}</p>
               <p className="text-sm text-gray-600">Celkem fotek</p>
             </div>
             
-            <div className="bg-white rounded-xl p-4 text-center shadow-md">
+            <div className="bg-white border border-gray-100 rounded-xl p-4 text-center shadow-sm">
               <p className="text-2xl font-bold text-purple-600">
                 {Math.round(filteredLogs.reduce((sum, log) => sum + log.mood, 0) / filteredLogs.length * 10) / 10}
               </p>
               <p className="text-sm text-gray-600">Průměrná nálada</p>
             </div>
             
-            <div className="bg-white rounded-xl p-4 text-center shadow-md">
+            <div className="bg-white border border-gray-100 rounded-xl p-4 text-center shadow-sm">
               <p className="text-2xl font-bold text-blue-600">
                 {Math.round(filteredLogs.reduce((sum, log) => sum + log.skinRating, 0) / filteredLogs.length * 10) / 10}
               </p>
               <p className="text-sm text-gray-600">Průměrné hodnocení</p>
             </div>
             
-            <div className="bg-white rounded-xl p-4 text-center shadow-md">
+            <div className="bg-white border border-gray-100 rounded-xl p-4 text-center shadow-sm">
               <p className="text-2xl font-bold text-green-600">
                 {filteredLogs.length > 0 ? filteredLogs[filteredLogs.length - 1].day - filteredLogs[0].day + 1 : 0}
               </p>
@@ -504,7 +525,7 @@ function PhotoGalleryPage() {
 
         {/* Content */}
         {filteredLogs.length === 0 ? (
-          <Card className="border-0 shadow-lg">
+          <Card className="border border-gray-100 shadow-sm">
             <CardContent className="py-12">
               <div className="text-center">
                 <Camera className="w-16 h-16 text-gray-300 mx-auto mb-4" />
@@ -534,77 +555,151 @@ function PhotoGalleryPage() {
 
       </div>
 
-      {/* Photo Modal */}
+      {/* Photo Bottom Sheet */}
       {selectedPhoto && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-auto">
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/50 z-50 transition-opacity"
+            onClick={() => setSelectedPhoto(null)}
+          />
+          
+          {/* Bottom Sheet */}
+          <div className="fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-2xl shadow-2xl max-h-[85vh] overflow-hidden animate-in slide-in-from-bottom duration-300">
+            
+            {/* Handle */}
+            <div className="flex justify-center pt-3 pb-2">
+              <div className="w-12 h-1.5 bg-gray-300 rounded-full"></div>
+            </div>
             
             {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b">
-              <h3 className="text-xl font-bold text-gray-900">
-                Den {selectedPhoto.log.day} - {new Date(selectedPhoto.log.createdAt?.toDate?.() || selectedPhoto.log.createdAt).toLocaleDateString('cs-CZ')}
+            <div className="flex items-center justify-between px-6 py-3 border-b border-gray-100">
+              <h3 className="text-lg font-bold text-gray-900">
+                Den {selectedPhoto.log.day}
               </h3>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setSelectedPhoto(null)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 hover:text-gray-600 rounded-full"
               >
                 <X className="w-5 h-5" />
               </Button>
             </div>
             
-            {/* Content */}
-            <div className="p-6 space-y-6">
-              
-              {/* Photo */}
-              <div className="text-center">
-                <img
-                  src={selectedPhoto.photo.url}
-                  alt={`Den ${selectedPhoto.log.day}`}
-                  className="max-w-full max-h-96 mx-auto rounded-xl shadow-lg"
-                />
-              </div>
-              
-              {/* Stats */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-red-50 rounded-lg p-4 text-center">
-                  <Heart className="w-8 h-8 text-red-500 mx-auto mb-2" />
-                  <p className="text-2xl font-bold text-red-600">{selectedPhoto.log.mood}/5</p>
-                  <p className="text-sm text-gray-600">Nálada</p>
+            {/* Scrollable Content */}
+            <div className="overflow-y-auto max-h-[calc(85vh-80px)]">
+              <div className="p-6 space-y-6">
+                
+                {/* Photo */}
+                <div className="text-center">
+                  <div className="relative inline-block">
+                    <img
+                      src={selectedPhoto.photo.url}
+                      alt={`Den ${selectedPhoto.log.day}`}
+                      className="max-w-full max-h-64 mx-auto rounded-xl shadow-lg"
+                    />
+                    {/* Day badge on photo */}
+                    <div className="absolute top-3 left-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white text-sm font-bold px-3 py-1 rounded-full shadow-lg">
+                      Den {selectedPhoto.log.day}
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-500 mt-2">
+                    {new Date(selectedPhoto.log.createdAt?.toDate?.() || selectedPhoto.log.createdAt).toLocaleDateString('cs-CZ', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric'
+                    })}
+                  </p>
                 </div>
                 
-                <div className="bg-yellow-50 rounded-lg p-4 text-center">
-                  <Star className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
-                  <p className="text-2xl font-bold text-yellow-600">{selectedPhoto.log.skinRating}/5</p>
-                  <p className="text-sm text-gray-600">Hodnocení pleti</p>
+                {/* Stats */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-red-50 border border-red-100 rounded-xl p-4 text-center">
+                    <Heart className="w-8 h-8 text-red-500 mx-auto mb-2" />
+                    <p className="text-2xl font-bold text-red-600">{selectedPhoto.log.mood}/5</p>
+                    <p className="text-sm text-gray-600">Nálada</p>
+                    <div className="flex justify-center mt-1">
+                      {[1, 2, 3, 4, 5].map((i) => (
+                        <span key={i} className="text-lg">
+                          {i <= selectedPhoto.log.mood ? '😊' : '😐'}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div className="bg-yellow-50 border border-yellow-100 rounded-xl p-4 text-center">
+                    <Star className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
+                    <p className="text-2xl font-bold text-yellow-600">{selectedPhoto.log.skinRating}/5</p>
+                    <p className="text-sm text-gray-600">Hodnocení pleti</p>
+                    <div className="flex justify-center mt-1">
+                      {'⭐'.repeat(selectedPhoto.log.skinRating)}
+                    </div>
+                  </div>
                 </div>
-              </div>
-              
-              {/* Note */}
-              {selectedPhoto.log.note && (
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h4 className="font-semibold text-gray-900 mb-2">Poznámka k dni:</h4>
-                  <p className="text-gray-700 leading-relaxed">{selectedPhoto.log.note}</p>
+                
+                {/* Progress Message */}
+                <div className="text-center">
+                  {(() => {
+                    const progress = getProgressMessage(selectedPhoto.log)
+                    return (
+                      <div className="inline-flex items-center space-x-2 bg-gray-50 px-4 py-2 rounded-full">
+                        <TrendingUp className="w-4 h-4 text-green-500" />
+                        <span className={`font-medium ${progress.color}`}>
+                          {progress.text}
+                        </span>
+                      </div>
+                    )
+                  })()}
                 </div>
-              )}
-              
-              {/* Progress */}
-              <div className="text-center">
-                {(() => {
-                  const progress = getProgressMessage(selectedPhoto.log)
-                  return (
-                    <p className={`text-lg font-semibold ${progress.color}`}>
-                      {progress.text}
-                    </p>
-                  )
-                })()}
+                
+                {/* Note */}
+                {selectedPhoto.log.note && (
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl p-4">
+                    <div className="flex items-start space-x-3">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-blue-600 text-sm">💭</span>
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-gray-900 mb-2">Poznámka k dni:</h4>
+                        <p className="text-gray-700 leading-relaxed italic">
+                          "{selectedPhoto.log.note}"
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Action Buttons */}
+                <div className="grid grid-cols-2 gap-3 pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setSelectedPhoto(null)}
+                    className="h-12 border-gray-200 hover:bg-gray-50"
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Zavřít
+                  </Button>
+                  
+                  <Button
+                    onClick={() => {
+                      // Přechod na den v aplikaci
+                      navigate(`/day/${selectedPhoto.log.day}`)
+                    }}
+                    className="h-12 bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white"
+                  >
+                    <Calendar className="w-4 h-4 mr-2" />
+                    Zobrazit den
+                  </Button>
+                </div>
+                
+                {/* Bottom safe area */}
+                <div className="h-6"></div>
+                
               </div>
-              
             </div>
-            
           </div>
-        </div>
+        </>
       )}
 
     </div>
