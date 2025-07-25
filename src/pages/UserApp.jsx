@@ -4,7 +4,7 @@ import BottomNavigation from '../components/ui/BottomNavigation'
 import MyDayPage from '../components/user/MyDayPage'
 import OverviewPage from '../components/user/OverviewPage'  
 import ChatPage from '../components/user/ChatPage'
-import PhotoGalleryPage from '../components/user/PhotoGalleryPage'
+import PhotoGalleryPage from '../components/user/PhotoGalleryPage' // 🆕 Import PhotoGallery
 import ProfilePage from '../components/user/ProfilePage'
 import DailyTaskPage from '../components/user/DailyTaskPage'
 
@@ -17,6 +17,7 @@ function UserApp() {
           <Route path="/" element={<Navigate to="/my-day" replace />} />
           <Route path="/my-day" element={<MyDayPage />} />
           <Route path="/overview" element={<OverviewPage />} />
+          <Route path="/photos" element={<PhotoGalleryPage />} /> {/* 🆕 PhotoGallery route */}
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/day/:dayNumber" element={<DailyTaskPage />} />

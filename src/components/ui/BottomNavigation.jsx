@@ -5,7 +5,7 @@ import {
   BarChart3, 
   MessageSquare, 
   User,
-  Heart
+  Camera
 } from 'lucide-react'
 
 const navigationItems = [
@@ -22,6 +22,13 @@ const navigationItems = [
     icon: BarChart3,
     label: 'Přehled',
     activeColor: 'text-purple-600'
+  },
+  {
+    id: 'photos',
+    path: '/photos',
+    icon: Camera,
+    label: 'Fotky',
+    activeColor: 'text-indigo-600'
   },
   {
     id: 'chat',
@@ -49,7 +56,7 @@ function BottomNavigation() {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-lg">
-      <div className="max-w-7xl mx-auto px-4">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4">
         <nav className="flex justify-around items-center h-16">
           {navigationItems.map((item) => {
             const Icon = item.icon
@@ -59,15 +66,23 @@ function BottomNavigation() {
               <button
                 key={item.id}
                 onClick={() => handleNavigate(item.path)}
-                className={`flex flex-col items-center justify-center space-y-1 px-2 py-1 rounded-lg transition-all duration-200 min-w-0 flex-1 ${
+                className={`flex flex-col items-center justify-center space-y-1 px-1 sm:px-2 py-1 rounded-lg transition-all duration-200 min-w-0 flex-1 ${
                   isActive 
                     ? `${item.activeColor} bg-gray-50 scale-105` 
                     : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                 }`}
               >
-                <Icon className={`w-5 h-5 ${isActive ? 'animate-pulse' : ''}`} />
-                <span className={`text-xs font-medium ${isActive ? 'font-semibold' : ''}`}>
+                <Icon className={`w-4 h-4 sm:w-5 sm:h-5 ${isActive ? 'animate-pulse' : ''}`} />
+                <span className={`text-xs font-medium ${isActive ? 'font-semibold' : ''} hidden xs:block`}>
                   {item.label}
+                </span>
+                {/* Kratší labely pro malé obrazovky */}
+                <span className={`text-xs font-medium ${isActive ? 'font-semibold' : ''} xs:hidden`}>
+                  {item.id === 'my-day' ? 'Den' : 
+                   item.id === 'overview' ? 'Graf' :
+                   item.id === 'photos' ? 'Foto' :
+                   item.id === 'chat' ? 'Chat' :
+                   item.id === 'profile' ? 'Já' : item.label}
                 </span>
                 {isActive && (
                   <div className={`w-1 h-1 rounded-full bg-current animate-pulse`} />
