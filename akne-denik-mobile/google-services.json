@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "913808196294",
+    "project_id": "akneonline-c6ec4",
+    "storage_bucket": "akneonline-c6ec4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:913808196294:android:af06e23aa842c4cfda4dc7",
+        "android_client_info": {
+          "package_name": "com.aknedenik.cz"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCIczDvJlmI-8Y-VtyQGaYFeHTxMdCe3HQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

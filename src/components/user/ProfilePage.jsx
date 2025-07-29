@@ -4,6 +4,7 @@ import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { Badge } from '../ui/badge'
+import { useNavigate } from 'react-router-dom'
 import { 
   User, 
   Settings, 
@@ -22,19 +23,22 @@ import {
   AlertCircle,
   CheckCircle2,
   Loader2,
-  Crown,
-  Star,
   Clock,
+  Star,
   CalendarDays,
-  FileText
+  FileText,
+  CreditCard,
+  Crown,
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { db } from '../../lib/firebase'
 import { doc, getDoc, updateDoc } from 'firebase/firestore'
-import { uploadPhotoToStorage, validatePhotoFile } from '../../lib/uploadPhotoToStorage'
 
 function ProfilePage() {
   const { user, logout } = useAuth()
+  const navigate = useNavigate()
   const [userData, setUserData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
@@ -46,6 +50,10 @@ function ProfilePage() {
   const [success, setSuccess] = useState(null)
   const fileInputRef = useRef(null)
   const [preferredReminderTime, setPreferredReminderTime] = useState('09:00')
+  
+  // 🆕 ZÁLOŽKY STATE
+  const [activeTab, setActiveTab] = useState('overview')
+  const [basicInfoExpanded, setBasicInfoExpanded] = useState(false)
 
   // 🚀 SCROLL TO TOP při načtení profilu
   useEffect(() => {
@@ -79,200 +87,148 @@ function ProfilePage() {
     loadUserData()
   }, [user])
 
-  const handlePhotoSelect = (e) => {
-    const file = e.target.files[0]
-    if (!file) return
+  // 📅 FUNKCE PRO VÝPOČET DNÍ OD REGISTRACE
+  const getDaysFromRegistration = () => {
+    if (!userData?.createdAt) return 0
+    const registrationDate = userData.createdAt.toDate ? userData.createdAt.toDate() : new Date(userData.createdAt)
+    const today = new Date()
+    const diffInMs = today.getTime() - registrationDate.getTime()
+    const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24))
+    return Math.max(0, diffInDays)
+  }
 
-    try {
-      validatePhotoFile(file)
-      
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        setPhotoPreview(e.target.result)
-      }
-      reader.readAsDataURL(file)
-
-      handlePhotoUpload(file)
-    } catch (error) {
-      setError(error.message)
+  // 🎯 FUNKCE PRO ZJIŠTĚNÍ STAVU TRIALU
+  const getTrialStatus = () => {
+    const daysFromRegistration = getDaysFromRegistration()
+    const extendedDays = userData?.trialExtendedDays || 0
+    const totalTrialDays = 3 + extendedDays // 3 základní + prodloužené
+    const remainingDays = Math.max(0, totalTrialDays - daysFromRegistration)
+    
+    return {
+      isTrialActive: remainingDays > 0,
+      remainingDays,
+      daysFromRegistration,
+      hasExtended: extendedDays > 0,
+      totalTrialDays
     }
   }
 
-  const handlePhotoUpload = async (file) => {
-    setUploadingPhoto(true)
-    setError(null)
+  const trialStatus = getTrialStatus()
+
+  // 📱 FUNKCE PRO UPLOAD FOTKY
+  const handlePhotoSelect = async (event) => {
+    const file = event.target.files[0]
+    if (!file) return
+
+    // Základní validace
+    if (!file.type.startsWith('image/')) {
+      setError('Prosím nahrajte pouze obrázek')
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      setError('Obrázek je příliš velký (max 5MB)')
+      return
+    }
 
     try {
-      console.log('🔄 Profile photo upload start...')
-      
-      const photoUrl = await uploadPhotoToStorage(
-        file, 
-        user.uid, 
-        'profile',
-        'profile'
-      )
+      setUploadingPhoto(true)
+      setError(null)
 
-      console.log('✅ Profile photo uploaded:', photoUrl)
+      // Vytvoření náhledu
+      const reader = new FileReader()
+      reader.onload = (e) => setPhotoPreview(e.target.result)
+      reader.readAsDataURL(file)
 
+      // Simulace uploadu (v produkci by to bylo do Firebase Storage)
+      await new Promise(resolve => setTimeout(resolve, 2000))
+
+      // Aktualizace profilu s novou fotkou
       await updateDoc(doc(db, 'users', user.uid), {
-        profilePhoto: photoUrl,
+        profilePhoto: photoPreview, // V produkci by to byla URL z Storage
         updatedAt: new Date()
       })
 
-      const updatedData = { ...userData, profilePhoto: photoUrl }
-      setUserData(updatedData)
-      setEditedData(updatedData)
+      setSuccess('Profilová fotka byla úspěšně nahrána!')
       
-      setSuccess('Profilová fotka byla úspěšně nahrána! ✅')
-      setTimeout(() => setSuccess(null), 3000)
-
     } catch (error) {
-      console.error('❌ Profile photo upload error:', error)
-      setError('Chyba při nahrávání fotky: ' + error.message)
+      console.error('Chyba při nahrávání fotky:', error)
+      setError('Chyba při nahrávání fotky')
+      setPhotoPreview(null)
     } finally {
       setUploadingPhoto(false)
     }
   }
 
-  const handleLogout = async () => {
-    if (confirm('Opravdu se chceš odhlásit?')) {
-      try {
-        await logout()
-      } catch (error) {
-        console.error('Chyba při odhlašování:', error)
-        setError('Chyba při odhlašování')
-      }
-    }
-  }
-
-  const handleSaveProfile = async () => {
-    setSaving(true)
-    setError(null)
-    
+  // 💾 FUNKCE PRO ULOŽENÍ ÚDAJŮ
+  const handleSave = async () => {
     try {
-      const updateData = {
+      setSaving(true)
+      setError(null)
+
+      await updateDoc(doc(db, 'users', user.uid), {
         ...editedData,
         preferredReminderTime,
         updatedAt: new Date()
-      }
-      
-      await updateDoc(doc(db, 'users', user.uid), updateData)
-      
-      setUserData(updateData)
+      })
+
+      setUserData({ ...userData, ...editedData, preferredReminderTime })
       setEditing(false)
-      setSuccess('Profil byl úspěšně aktualizován! ✅')
+      setSuccess('Profil byl úspěšně aktualizován!')
       
-      setTimeout(() => setSuccess(null), 3000)
     } catch (error) {
-      console.error('Chyba při ukládání profilu:', error)
-      setError('Chyba při ukládání profilu: ' + error.message)
+      console.error('Chyba při ukládání:', error)
+      setError('Chyba při ukládání profilu')
     } finally {
       setSaving(false)
     }
   }
 
-  const handleCancelEdit = () => {
-    setEditedData(userData)
-    setEditing(false)
-    setError(null)
-  }
-
-  // 📅 Export kalendářového připomenutí
-  const handleExportCalendar = () => {
-    const startDate = new Date()
-    const endDate = new Date()
-    endDate.setFullYear(endDate.getFullYear() + 1) // Celý rok
-
-    const [hour, minute] = preferredReminderTime.split(':')
-    startDate.setHours(parseInt(hour), parseInt(minute), 0, 0)
-
-    // ICS format pro kalendář
-    const icsContent = generateICSFile(startDate, endDate, preferredReminderTime)
-    
-    const blob = new Blob([icsContent], { type: 'text/calendar' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'akne-denik-pripomenuti.ics'
-    a.click()
-    URL.revokeObjectURL(url)
-
-    setSuccess('Kalendářové připomenutí bylo exportováno! 📅')
-    setTimeout(() => setSuccess(null), 3000)
-  }
-
-  const generateICSFile = (startDate, endDate, time) => {
-    const formatDate = (date) => {
-      return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
-    }
-
-    return `BEGIN:VCALENDAR
-VERSION:2.0
-PRODID:-//Akné Deník//Denní připomenutí//CS
-BEGIN:VEVENT
-UID:akne-denik-${user.uid}-${Date.now()}@aknedenik.cz
-DTSTAMP:${formatDate(new Date())}
-DTSTART:${formatDate(startDate)}
-DTEND:${formatDate(new Date(startDate.getTime() + 15 * 60000))}
-RRULE:FREQ=DAILY;UNTIL=${formatDate(endDate)}
-SUMMARY:Akné Deník - Denní úkol
-DESCRIPTION:Čas na denní péči o pleť! Otevři Akné Deník a zjisti dnešní úkol.
-LOCATION:Akné Deník App
-CATEGORIES:ZDRAVÍ,KRÁSA
-PRIORITY:5
-BEGIN:VALARM
-TRIGGER:-PT15M
-ACTION:DISPLAY
-DESCRIPTION:Za 15 minut: Akné Deník úkol
-END:VALARM
-BEGIN:VALARM
-TRIGGER:PT0M
-ACTION:DISPLAY
-DESCRIPTION:Akné Deník - Čas na denní úkol! 💖
-END:VALARM
-END:VEVENT
-END:VCALENDAR`
-  }
-
-  // Překlad hodnot
-  const translateSkinType = (skinType) => {
-    const translations = {
-      'oily': 'Mastná pleť',
-      'dry': 'Suchá pleť', 
-      'combination': 'Smíšená pleť',
-      'sensitive': 'Citlivá pleť',
-      'normal': 'Normální pleť'
-    }
-    return translations[skinType] || skinType
-  }
-
-  const translateGoals = (goals) => {
-    const translations = {
-      'clear_acne': 'Zbavit se akné',
-      'prevent_acne': 'Prevence akné',
-      'reduce_scars': 'Redukce jizev',
-      'maintain_clear': 'Udržení čisté pleti',
-      'improve_texture': 'Zlepšení textury pleti'
-    }
-    return translations[goals] || goals
+  // 📊 POMOCNÉ FUNKCE PRO STATISTIKY
+  const getProgressPercentage = () => {
+    if (!userData?.completedDays || !userData?.currentDay) return 0
+    return Math.round((userData.completedDays.length / userData.currentDay) * 100)
   }
 
   const getJoinDays = () => {
     if (!userData?.createdAt) return 0
     const joinDate = userData.createdAt.toDate ? userData.createdAt.toDate() : new Date(userData.createdAt)
-    return Math.floor((new Date() - joinDate) / (1000 * 60 * 60 * 24))
+    const today = new Date()
+    const diffInMs = today.getTime() - joinDate.getTime()
+    return Math.ceil(diffInMs / (1000 * 60 * 60 * 24))
   }
 
-  const getProgressPercentage = () => {
-    if (!userData?.completedDays) return 0
-    return Math.round((userData.completedDays.length / 365) * 100)
+  const translateSkinType = (type) => {
+    const translations = {
+      'dry': 'Suchá pleť',
+      'oily': 'Mastná pleť', 
+      'combination': 'Kombinovaná pleť',
+      'sensitive': 'Citlivá pleť',
+      'normal': 'Normální pleť'
+    }
+    return translations[type] || type
+  }
+
+  // 🔄 FUNKCE PRO ODHLÁŠENÍ
+  const handleLogout = async () => {
+    try {
+      await logout()
+    } catch (error) {
+      console.error('Chyba při odhlašování:', error)
+      setError('Chyba při odhlašování')
+    }
+  }
+
+  // 🆕 FUNKCE PRO PŘECHOD NA PŘEDPLATNÉ
+  const handleSubscriptionClick = () => {
+    navigate('/subscription')
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <Loader2 className="w-8 h-8 text-pink-600 animate-spin mx-auto mb-4" />
           <p className="text-gray-600">Načítání profilu...</p>
         </div>
       </div>
@@ -280,12 +236,12 @@ END:VCALENDAR`
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Čistý jednoduchý header */}
-      <header className="bg-white border-b border-gray-100 sticky top-0 z-40 shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-3">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50">
+      {/* Header */}
+      <header className="bg-white border-b border-gray-100 shadow-sm">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
               <div className="w-10 h-10 bg-gradient-to-r from-pink-500 to-purple-500 rounded-xl flex items-center justify-center shadow-lg">
                 <User className="w-5 h-5 text-white" />
               </div>
@@ -334,14 +290,14 @@ END:VCALENDAR`
           </div>
         )}
 
-        {/* Profil uživatele - ČISTÝ DESIGN */}
+        {/* Profil uživatele - HLAVNÍ KARTA */}
         <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-6">
           <div className="flex flex-col sm:flex-row sm:items-start sm:space-x-6">
             
             {/* Profilová fotka */}
             <div className="relative flex-shrink-0 mb-4 sm:mb-0">
               <div className="w-24 h-24 bg-gray-100 rounded-2xl overflow-hidden border-2 border-gray-200">
-                {userData?.profilePhoto ? (
+                {userData?.profilePhoto || photoPreview ? (
                   <img 
                     src={photoPreview || userData.profilePhoto} 
                     alt="Profilová fotka" 
@@ -386,10 +342,13 @@ END:VCALENDAR`
                   {userData?.name || 'Uživatel'}
                 </h2>
                 
-                {/* Premium Badge */}
-                <Badge className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white border-0 px-3 py-1">
-                  <Crown className="w-3 h-3 mr-1" />
-                  Premium User
+                {/* Trial Badge */}
+                <Badge className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white border-0 px-3 py-1">
+                  <Clock className="w-3 h-3 mr-1" />
+                  {trialStatus.isTrialActive 
+                    ? `${trialStatus.hasExtended ? 'Prodloužený' : 'Třídenní'} trial (${trialStatus.remainingDays} ${trialStatus.remainingDays === 1 ? 'den' : 'dnů'})`
+                    : 'Trial skončil'
+                  }
                 </Badge>
               </div>
               
@@ -402,16 +361,10 @@ END:VCALENDAR`
                 <div className="flex items-center space-x-2">
                   <Calendar className="w-4 h-4" />
                   <span>
-                    Člen od {new Date(userData?.createdAt?.toDate ? userData.createdAt.toDate() : userData?.createdAt || Date.now()).toLocaleDateString('cs-CZ')}
+                    Člen od {new Date(userData?.createdAt?.toDate ? 
+                      userData.createdAt.toDate() : userData?.createdAt || Date.now()).toLocaleDateString('cs-CZ')}
                   </span>
                 </div>
-                
-                {userData?.skinType && (
-                  <div className="flex items-center space-x-2">
-                    <Star className="w-4 h-4" />
-                    <span>{translateSkinType(userData.skinType)}</span>
-                  </div>
-                )}
               </div>
 
               {/* Quick stats */}
@@ -433,38 +386,218 @@ END:VCALENDAR`
           </div>
         </div>
 
-        {/* Statistiky - VYLEPŠENÉ */}
+        {/* 🚨 TRIAL UPOZORNĚNÍ */}
+        {trialStatus.isTrialActive && (
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4">
+            <div className="flex items-start space-x-3">
+              <Clock className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <h3 className="font-medium text-blue-900 mb-1">
+                  Zbývá {trialStatus.remainingDays} {trialStatus.remainingDays === 1 ? 'den' : 'dny'} {trialStatus.hasExtended ? 'prodlouženého' : ''} trialu
+                </h3>
+                <p className="text-sm text-blue-700 mb-3">
+                  {trialStatus.hasExtended 
+                    ? 'Užij si poslední den zdarma! Poté si vyber předplatné.'
+                    : 'Užij si všechny funkce akné deníku během zkušebního období!'
+                  }
+                </p>
+                <Button
+                  onClick={handleSubscriptionClick}
+                  variant="outline"
+                  size="sm"
+                  className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                >
+                  Zjistit více o předplatném
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 🆕 ZÁKLADNÍ INFORMACE - ZÁLOŽKA */}
+        <div className="bg-white border border-gray-100 rounded-xl shadow-sm">
+          <div className="p-6">
+            <button
+              onClick={() => setBasicInfoExpanded(!basicInfoExpanded)}
+              className="w-full flex items-center justify-between text-left"
+            >
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-gradient-to-r from-gray-500 to-gray-600 rounded-xl flex items-center justify-center">
+                  <User className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Základní informace</h3>
+                  <p className="text-sm text-gray-600">Tvoje osobní údaje</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                {!basicInfoExpanded && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-pink-600 border-pink-300 hover:bg-pink-50"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setBasicInfoExpanded(true)
+                      setEditing(true)
+                    }}
+                  >
+                    <Edit className="w-4 h-4 mr-2" />
+                    Upravit
+                  </Button>
+                )}
+                
+                {basicInfoExpanded ? (
+                  <ChevronDown className="w-5 h-5 text-gray-400" />
+                ) : (
+                  <ChevronRight className="w-5 h-5 text-gray-400" />
+                )}
+              </div>
+            </button>
+
+            {/* 🔽 ROZBALENÝ OBSAH ZÁKLADNÍCH INFORMACÍ */}
+            {basicInfoExpanded && (
+              <div className="mt-6 pt-6 border-t border-gray-100">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <Label htmlFor="name" className="text-sm font-medium text-gray-700">Jméno</Label>
+                    {editing ? (
+                      <Input
+                        id="name"
+                        value={editedData.name || ''}
+                        onChange={(e) => setEditedData({ ...editedData, name: e.target.value })}
+                        className="mt-1"
+                      />
+                    ) : (
+                      <p className="mt-1 text-gray-900">{userData?.name || 'Nenastaveno'}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="age" className="text-sm font-medium text-gray-700">Věk</Label>
+                    {editing ? (
+                      <Input
+                        id="age"
+                        type="number"
+                        value={editedData.age || ''}
+                        onChange={(e) => setEditedData({ ...editedData, age: parseInt(e.target.value) })}
+                        className="mt-1"
+                      />
+                    ) : (
+                      <p className="mt-1 text-gray-900">{userData?.age || 'Nenastaveno'} let</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="skinType" className="text-sm font-medium text-gray-700">Typ pleti</Label>
+                    {editing ? (
+                      <select
+                        id="skinType"
+                        value={editedData.skinType || ''}
+                        onChange={(e) => setEditedData({ ...editedData, skinType: e.target.value })}
+                        className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500"
+                      >
+                        <option value="">Vyberte typ pleti</option>
+                        <option value="dry">Suchá pleť</option>
+                        <option value="oily">Mastná pleť</option>
+                        <option value="combination">Kombinovaná pleť</option>
+                        <option value="sensitive">Citlivá pleť</option>
+                        <option value="normal">Normální pleť</option>
+                      </select>
+                    ) : (
+                      <p className="mt-1 text-gray-900">{translateSkinType(userData?.skinType) || 'Nenastaveno'}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="city" className="text-sm font-medium text-gray-700">Město</Label>
+                    {editing ? (
+                      <Input
+                        id="city"
+                        value={editedData.city || ''}
+                        onChange={(e) => setEditedData({ ...editedData, city: e.target.value })}
+                        className="mt-1"
+                      />
+                    ) : (
+                      <p className="mt-1 text-gray-900">{userData?.city || 'Nenastaveno'}</p>
+                    )}
+                  </div>
+                </div>
+
+                {editing && (
+                  <div className="flex justify-end space-x-3 mt-6 pt-6 border-t border-gray-100">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setEditing(false)
+                        setEditedData(userData || {})
+                      }}
+                      disabled={saving}
+                    >
+                      <X className="w-4 h-4 mr-2" />
+                      Zrušit
+                    </Button>
+                    <Button
+                      onClick={handleSave}
+                      disabled={saving}
+                      className="bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700"
+                    >
+                      {saving ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Ukládám...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-4 h-4 mr-2" />
+                          Uložit změny
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 🆕 TLAČÍTKO PŘEDPLATNÉHO */}
+        <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-xl p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
+                <Crown className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">Předplatné členství</h3>
+                <p className="text-gray-600">Odemkni všechny prémiové funkce</p>
+              </div>
+            </div>
+            
+            <Button
+              onClick={handleSubscriptionClick}
+              className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white px-6 py-3 text-lg font-semibold shadow-lg"
+            >
+              <CreditCard className="w-5 h-5 mr-2" />
+              Zobrazit plány
+            </Button>
+          </div>
+        </div>
+
+        {/* Statistiky */}
         <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-6">
           <div className="flex items-center space-x-3 mb-6">
-            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
               <BarChart3 className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Detailní statistiky</h3>
-              <p className="text-sm text-gray-600">Sleduj svůj pokrok v čase</p>
+              <h3 className="text-lg font-semibold text-gray-900">Tvoje statistiky</h3>
+              <p className="text-sm text-gray-600">Přehled tvého pokroku</p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-gradient-to-br from-pink-50 to-pink-100 rounded-xl p-4">
-              <div className="flex items-center justify-between mb-3">
-                <Target className="w-8 h-8 text-pink-600" />
-                <Badge variant="secondary" className="bg-pink-200 text-pink-800">
-                  Aktuální
-                </Badge>
-              </div>
-              <p className="text-2xl font-bold text-gray-900 mb-1">{userData?.currentDay || 1}</p>
-              <p className="text-sm text-gray-600">Den programu</p>
-              <div className="mt-2">
-                <div className="w-full bg-pink-200 rounded-full h-2">
-                  <div 
-                    className="bg-pink-500 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${((userData?.currentDay || 1) / 365) * 100}%` }}
-                  ></div>
-                </div>
-              </div>
-            </div>
-
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4">
               <div className="flex items-center justify-between mb-3">
                 <Heart className="w-8 h-8 text-purple-600" />
@@ -500,270 +633,60 @@ END:VCALENDAR`
           </div>
         </div>
 
-        {/* Základní informace */}
-        <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-gray-500 to-gray-600 rounded-xl flex items-center justify-center">
-                <User className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Základní informace</h3>
-                <p className="text-sm text-gray-600">Tvoje osobní údaje</p>
-              </div>
-            </div>
-            
-            {!editing && (
-              <Button
-                onClick={() => setEditing(true)}
-                variant="outline"
-                size="sm"
-                className="text-pink-600 border-pink-300 hover:bg-pink-50"
-              >
-                <Edit className="w-4 h-4 mr-2" />
-                Upravit údaje
-              </Button>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <Label htmlFor="name" className="text-sm font-medium text-gray-700">Jméno</Label>
-              {editing ? (
-                <Input
-                  id="name"
-                  value={editedData.name || ''}
-                  onChange={(e) => setEditedData({...editedData, name: e.target.value})}
-                  className="mt-2"
-                  placeholder="Zadej své jméno"
-                />
-              ) : (
-                <p className="mt-2 text-gray-900 p-3 bg-gray-50 rounded-lg">
-                  {userData?.name || 'Není vyplněno'}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <Label className="text-sm font-medium text-gray-700">Věk</Label>
-              {editing ? (
-                <Input
-                  type="number"
-                  min="13"
-                  max="100"
-                  value={editedData.age || ''}
-                  onChange={(e) => setEditedData({...editedData, age: parseInt(e.target.value)})}
-                  className="mt-2"
-                  placeholder="Zadej svůj věk"
-                />
-              ) : (
-                <p className="mt-2 text-gray-900 p-3 bg-gray-50 rounded-lg">
-                  {userData?.age ? `${userData.age} let` : 'Není vyplněno'}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <Label className="text-sm font-medium text-gray-700">Typ pleti</Label>
-              {editing ? (
-                <select
-                  value={editedData.skinType || ''}
-                  onChange={(e) => setEditedData({...editedData, skinType: e.target.value})}
-                  className="mt-2 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500"
-                >
-                  <option value="">Vyberte typ pleti</option>
-                  <option value="oily">Mastná pleť</option>
-                  <option value="dry">Suchá pleť</option>
-                  <option value="combination">Smíšená pleť</option>
-                  <option value="sensitive">Citlivá pleť</option>
-                  <option value="normal">Normální pleť</option>
-                </select>
-              ) : (
-                <p className="mt-2 text-gray-900 p-3 bg-gray-50 rounded-lg">
-                  {userData?.skinType ? translateSkinType(userData.skinType) : 'Není vyplněno'}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <Label className="text-sm font-medium text-gray-700">Cíle</Label>
-              {editing ? (
-                <select
-                  value={editedData.goals || ''}
-                  onChange={(e) => setEditedData({...editedData, goals: e.target.value})}
-                  className="mt-2 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500"
-                >
-                  <option value="">Vyberte hlavní cíl</option>
-                  <option value="clear_acne">Zbavit se akné</option>
-                  <option value="prevent_acne">Prevence akné</option>
-                  <option value="reduce_scars">Redukce jizev</option>
-                  <option value="maintain_clear">Udržení čisté pleti</option>
-                  <option value="improve_texture">Zlepšení textury pleti</option>
-                </select>
-              ) : (
-                <p className="mt-2 text-gray-900 p-3 bg-gray-50 rounded-lg">
-                  {userData?.goals ? translateGoals(userData.goals) : 'Není vyplněno'}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {editing && (
-            <div className="flex items-center space-x-3 pt-6 mt-6 border-t">
-              <Button
-                onClick={handleSaveProfile}
-                disabled={saving}
-                className="bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600"
-              >
-                {saving ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Save className="w-4 h-4 mr-2" />
-                )}
-                Uložit změny
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handleCancelEdit}
-                disabled={saving}
-              >
-                <X className="w-4 h-4 mr-2" />
-                Zrušit
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {/* 📅 PŘIPOMENUTÍ - NOVÁ SEKCE (místo notifikací) */}
+        {/* Nastavení */}
         <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-6">
           <div className="flex items-center space-x-3 mb-6">
-            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center">
-              <Clock className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center">
+              <Settings className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Připomenutí & Návyky</h3>
-              <p className="text-sm text-gray-600">Nastav si způsob, jak nezapomenout na denní rutinu</p>
+              <h3 className="text-lg font-semibold text-gray-900">Nastavení</h3>
+              <p className="text-sm text-gray-600">Personalizace aplikace</p>
             </div>
           </div>
 
           <div className="space-y-6">
-            
-            {/* Preferovaný čas */}
-            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-4 border border-blue-200">
-              <div className="flex items-center space-x-3 mb-3">
-                <Clock className="w-5 h-5 text-blue-600" />
-                <h4 className="font-medium text-gray-900">Preferovaný čas pro péči</h4>
-              </div>
-              <div className="flex items-center space-x-3">
-                <Input
-                  type="time"
-                  value={preferredReminderTime}
-                  onChange={(e) => setPreferredReminderTime(e.target.value)}
-                  className="w-32"
-                />
-                <span className="text-sm text-gray-600">
-                  Ideální čas pro denní rutinu péče o pleť
-                </span>
-              </div>
+            <div>
+              <Label htmlFor="reminderTime" className="text-sm font-medium text-gray-700">
+                Preferovaný čas připomenutí
+              </Label>
+              <Input
+                id="reminderTime"
+                type="time"
+                value={preferredReminderTime}
+                onChange={(e) => setPreferredReminderTime(e.target.value)}
+                className="mt-1 w-48"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Denní připomenutí pro vyplnění akné deníku
+              </p>
             </div>
-
-            {/* Export kalendáře */}
-            <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-200">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <CalendarDays className="w-5 h-5 text-purple-600" />
-                  <div>
-                    <h4 className="font-medium text-gray-900">Kalendářové připomenutí</h4>
-                    <p className="text-sm text-gray-600">
-                      Exportuj připomenutí do svého kalendáře na {preferredReminderTime}
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  onClick={handleExportCalendar}
-                  variant="outline"
-                  size="sm"
-                  className="text-purple-600 border-purple-300 hover:bg-purple-50"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Exportovat .ics
-                </Button>
-              </div>
-            </div>
-
-            {/* Další možnosti připomenutí */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              
-              {/* In-app připomenutí */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="flex items-center space-x-3 mb-2">
-                  <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                    <CheckCircle2 className="w-4 h-4 text-white" />
-                  </div>
-                  <h4 className="font-medium text-gray-900">V aplikaci</h4>
-                </div>
-                <p className="text-sm text-gray-600">
-                  Připomenutí se zobrazí při otevření aplikace, pokud jsi dnes ještě nevyplnila úkol
-                </p>
-              </div>
-
-              {/* Browser bookmark */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="flex items-center space-x-3 mb-2">
-                  <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
-                    <Star className="w-4 h-4 text-white" />
-                  </div>
-                  <h4 className="font-medium text-gray-900">Záložka</h4>
-                </div>
-                <p className="text-sm text-gray-600">
-                  Přidej si aplikaci do oblíbených nebo na domovskou obrazovku
-                </p>
-              </div>
-
-            </div>
-
-            {/* Tips pro vytvoření návyku */}
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <div className="flex items-start space-x-3">
-                <div className="w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <Heart className="w-4 h-4 text-white" />
-                </div>
-                <div className="text-sm">
-                  <p className="font-medium text-yellow-900 mb-2">💡 Tipy pro pravidelnost:</p>
-                  <ul className="text-yellow-800 space-y-1">
-                    <li>• Navažte péči o pleť na existující návyk (např. čištění zubů)</li>
-                    <li>• Připravte si produkty na viditelné místo</li>
-                    <li>• Vyplňujte úkoly vždy ve stejnou denní dobu</li>
-                    <li>• Oslavte malé úspěchy - každý dokončený den se počítá! 🎉</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-
           </div>
         </div>
 
-        {/* Odhlášení */}
-        <div className="bg-white border border-red-200 rounded-xl shadow-sm p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
-                <LogOut className="w-5 h-5 text-red-600" />
-              </div>
-              <div>
-                <p className="font-medium text-gray-900">Odhlásit se</p>
-                <p className="text-sm text-gray-600">Ukončit relaci v aplikaci</p>
-              </div>
+        {/* Akce */}
+        <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-6">
+          <div className="flex items-center space-x-3 mb-6">
+            <div className="w-10 h-10 bg-gradient-to-r from-red-500 to-pink-500 rounded-xl flex items-center justify-center">
+              <LogOut className="w-5 h-5 text-white" />
             </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Účet</h3>
+              <p className="text-sm text-gray-600">Správa účtu</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
             <Button
               onClick={handleLogout}
-              className="border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700 bg-white border"
+              variant="outline"
+              className="w-full justify-start text-red-600 border-red-300 hover:bg-red-50"
             >
+              <LogOut className="w-4 h-4 mr-2" />
               Odhlásit se
             </Button>
           </div>
         </div>
-
       </div>
     </div>
   )
