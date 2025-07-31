@@ -325,7 +325,7 @@ function SubscriptionCard({
       console.log('🔄 Vytváření platby pro:', { planType, price })
       
       // Vytvoř Payment Intent
-      const response = await fetch('/api/create-payment-intent', {
+      const response = await fetch('/api/stripe-payment', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
