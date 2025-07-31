@@ -1,3 +1,5 @@
+echo "// Stripe package added" | cat - api/create-payment-intent.js > temp && mv temp api/create-payment-intent.js
+
 import Stripe from 'stripe'
 
 export default async function handler(req, res) {
