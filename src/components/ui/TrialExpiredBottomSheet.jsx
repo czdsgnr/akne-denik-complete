@@ -23,23 +23,29 @@ import {
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
 
-// Stripe publishable key - automaticky test/live podle prostředí
-const stripePromise = loadStripe(
-  import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 
-  'pk_test_51Gum7DEvtJZVfPXMjBgH2NuU...' // 🧪 Fallback test key
-)
+// Stripe configuration
+const STRIPE_PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 
+  'pk_test_51Gum7DEvtJZVfPXM38InkyMzdr4xXts29GTxTcy7ZjewhRVpKT4wcdrm0yKiRgQxhqYDxKmZGu2mz0oti5eyUzSi00ppfmdv7o'
 
-// Card element options
+const stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY)
+
+// Card element styling
 const cardElementOptions = {
   style: {
     base: {
       fontSize: '16px',
       color: '#424770',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
       '::placeholder': {
         color: '#aab7c4',
       },
     },
+    invalid: {
+      color: '#fa755a',
+      iconColor: '#fa755a'
+    }
   },
+  hidePostalCode: true
 }
 
 function TrialExpiredBottomSheet({ isOpen, onClose, userData, onTrialExtended }) {
@@ -49,11 +55,9 @@ function TrialExpiredBottomSheet({ isOpen, onClose, userData, onTrialExtended })
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(null)
   
-  // 🔍 OPRAVENÁ LOGIKA PRO hasExtended
   const hasExtended = userData?.trialExtendedDays > 0
   const canExtend = !hasExtended
   
-  // 📱 FUNKCE PRO PRODLOUŽENÍ TRIALU
   const handleExtendTrial = async () => {
     if (hasExtended || !user) return
     
@@ -63,7 +67,6 @@ function TrialExpiredBottomSheet({ isOpen, onClose, userData, onTrialExtended })
       
       console.log('🔄 Prodlužuji trial pro:', user.uid)
       
-      // Aktualizace v Firebase
       const userRef = doc(db, 'users', user.uid)
       await updateDoc(userRef, {
         trialExtendedDays: 1,
@@ -72,15 +75,12 @@ function TrialExpiredBottomSheet({ isOpen, onClose, userData, onTrialExtended })
       })
       
       console.log('✅ Trial prodloužen úspěšně')
-      
       setSuccess('Trial byl prodloužen o 1 den! 🎉')
       
-      // Refresh trial status
       if (onTrialExtended) {
         await onTrialExtended()
       }
       
-      // Zavřít modal po 2 sekundách
       setTimeout(() => {
         onClose()
         setSuccess(null)
@@ -94,7 +94,6 @@ function TrialExpiredBottomSheet({ isOpen, onClose, userData, onTrialExtended })
     }
   }
 
-  // 🚀 NAVIGACE FUNKCE
   const handleNavigateToSubscription = () => {
     navigate('/subscription')
     onClose()
@@ -109,16 +108,13 @@ function TrialExpiredBottomSheet({ isOpen, onClose, userData, onTrialExtended })
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center p-4">
-      {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
       
-      {/* Modal */}
       <div className="relative w-full max-w-lg bg-white rounded-t-3xl shadow-2xl max-h-[90vh] overflow-y-auto animate-slide-up">
         
-        {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-100 p-6 rounded-t-3xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -142,10 +138,8 @@ function TrialExpiredBottomSheet({ isOpen, onClose, userData, onTrialExtended })
           </div>
         </div>
 
-        {/* Content */}
         <div className="p-6 space-y-6">
 
-          {/* Success/Error Messages */}
           {success && (
             <div className="bg-green-50 border border-green-200 rounded-xl p-4">
               <div className="flex items-center space-x-3">
@@ -164,7 +158,6 @@ function TrialExpiredBottomSheet({ isOpen, onClose, userData, onTrialExtended })
             </div>
           )}
 
-          {/* Extend Trial Option - pouze pokud ještě neprodloužil */}
           {canExtend && !success && (
             <div className="bg-gradient-to-br from-blue-50 to-indigo-100 border-2 border-blue-200 rounded-2xl p-6">
               <div className="text-center">
@@ -204,7 +197,6 @@ function TrialExpiredBottomSheet({ isOpen, onClose, userData, onTrialExtended })
             </div>
           )}
 
-          {/* Subscription Plans */}
           {!success && (
             <>
               <div className="text-center py-4">
@@ -218,7 +210,6 @@ function TrialExpiredBottomSheet({ isOpen, onClose, userData, onTrialExtended })
                 </p>
               </div>
 
-              {/* Roční plán - DOPORUČENÝ */}
               <div className="relative">
                 <div className="absolute -top-3 -right-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg z-10 flex items-center space-x-1">
                   <Star className="w-3 h-3" />
@@ -249,7 +240,6 @@ function TrialExpiredBottomSheet({ isOpen, onClose, userData, onTrialExtended })
                 </Elements>
               </div>
 
-              {/* Měsíční plán */}
               <Elements stripe={stripePromise}>
                 <SubscriptionCard
                   title="Měsíční plán"
@@ -268,7 +258,6 @@ function TrialExpiredBottomSheet({ isOpen, onClose, userData, onTrialExtended })
             </>
           )}
 
-          {/* Navigation Buttons */}
           <div className="pt-6 border-t border-gray-100">
             <div className="grid grid-cols-2 gap-3">
               <Button
@@ -290,25 +279,12 @@ function TrialExpiredBottomSheet({ isOpen, onClose, userData, onTrialExtended })
               </Button>
             </div>
           </div>
-
-          {/* Debug Info - pouze v development */}
-          {process.env.NODE_ENV === 'development' && (
-            <div className="bg-gray-100 rounded-lg p-3 text-xs font-mono">
-              <div className="space-y-1">
-                <div><strong>userData:</strong> {JSON.stringify(userData, null, 2)}</div>
-                <div><strong>hasExtended:</strong> {hasExtended ? '✅' : '❌'}</div>
-                <div><strong>canExtend:</strong> {canExtend ? '✅' : '❌'}</div>
-                <div><strong>trialExtendedDays:</strong> {userData?.trialExtendedDays || 0}</div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>
   )
 }
 
-// 💳 KOMPONENTA PRO SUBSCRIPTION KARTU S FIREBASE FUNCTIONS
 function SubscriptionCard({ 
   title, 
   price, 
@@ -328,10 +304,17 @@ function SubscriptionCard({
   const [processing, setProcessing] = useState(false)
   const [error, setError] = useState(null)
   const [showCardForm, setShowCardForm] = useState(false)
+  const [succeeded, setSucceeded] = useState(false)
   
   const handleSubscribe = async () => {
-    if (!stripe || !elements) {
-      setError('Stripe se ještě načítá...')
+    if (!stripe || !elements || !user) {
+      setError('Načítání platebního systému...')
+      return
+    }
+
+    const cardElement = elements.getElement(CardElement)
+    if (!cardElement) {
+      setError('Zadejte platební údaje')
       return
     }
 
@@ -341,50 +324,93 @@ function SubscriptionCard({
 
       console.log('🔄 Vytváření platby pro:', { planType, price })
       
-      // 1. Vytvoř Payment Intent přes Vercel API
-      const createPaymentResponse = await fetch('/api/create-payment-intent', {
+      // Vytvoř Payment Intent
+      const response = await fetch('/api/create-payment-intent', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           planType,
-          userId: user.uid
+          userId: user.uid,
+          email: user.email
         })
       })
       
-      if (!createPaymentResponse.ok) {
-        throw new Error('Chyba při vytváření platby')
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Chyba při vytváření platby')
       }
       
-      const { clientSecret } = await createPaymentResponse.json()
-      
-      // 2. Potvrď platbu přes Stripe
-      const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
-        payment_method: {
-          card: elements.getElement(CardElement),
-          billing_details: {
-            email: user.email,
-            name: user.displayName || user.email
+      const { clientSecret } = await response.json()
+      console.log('✅ Payment intent vytvořen')
+
+      // Potvrď platbu
+      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
+        clientSecret,
+        {
+          payment_method: {
+            card: cardElement,
+            billing_details: {
+              email: user.email,
+              name: user.displayName || user.email
+            }
           }
         }
-      })
+      )
 
-      if (error) {
-        setError(error.message)
-      } else if (paymentIntent.status === 'succeeded') {
-        // Úspěch! Firebase Functions webhook už aktualizoval database
+      if (stripeError) {
+        setError(stripeError.message)
+        return
+      }
+
+      if (paymentIntent.status === 'succeeded') {
         console.log('✅ Platba úspěšná:', paymentIntent.id)
-        onClose()
-        // Můžeš přidat redirect na success page
+        setSucceeded(true)
+        
+        // Aktualizuj uživatele v Firebase
+        const userRef = doc(db, 'users', user.uid)
+        await updateDoc(userRef, {
+          subscriptionStatus: 'active',
+          subscriptionType: planType,
+          subscriptionStartDate: new Date(),
+          subscriptionEndDate: planType === 'yearly' 
+            ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+            : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          lastPaymentId: paymentIntent.id,
+          updatedAt: new Date()
+        })
+        
+        setTimeout(() => {
+          onClose()
+          window.location.reload()
+        }, 2000)
       }
       
     } catch (error) {
       console.error('❌ Chyba při platbě:', error)
-      setError('Chyba při zpracování platby. Zkus to znovu.')
+      setError(error.message || 'Chyba při zpracování platby')
     } finally {
       setProcessing(false)
     }
+  }
+
+  if (succeeded) {
+    return (
+      <div className={`bg-gradient-to-r ${gradient} p-1 rounded-2xl shadow-lg`}>
+        <div className="bg-white rounded-xl p-6">
+          <div className="text-center">
+            <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-gray-900 mb-2">
+              Platba byla úspěšná! 🎉
+            </h3>
+            <p className="text-gray-600">
+              Děkujeme za důvěru. Přesměrováváme...
+            </p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -400,7 +426,7 @@ function SubscriptionCard({
           
           <div className="mt-4">
             {originalPrice && (
-              <div className="text-sm text-gray-500 line-through">{originalPrice} Kč/{period}</div>
+              <div className="text-sm text-gray-500 line-through">{originalPrice} Kč</div>
             )}
             <div className="flex items-baseline justify-center">
               <span className="text-3xl font-bold text-gray-900">{price}</span>
@@ -424,11 +450,13 @@ function SubscriptionCard({
 
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-            <p className="text-red-700 text-sm">{error}</p>
+            <p className="text-red-700 text-sm flex items-center">
+              <AlertCircle className="w-4 h-4 mr-2" />
+              {error}
+            </p>
           </div>
         )}
 
-        {/* Card Form */}
         {showCardForm && (
           <div className="mb-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -437,6 +465,9 @@ function SubscriptionCard({
             <div className="bg-white p-3 border rounded-md">
               <CardElement options={cardElementOptions} />
             </div>
+            <p className="text-xs text-gray-500 mt-2">
+              Testovací karta: 4242 4242 4242 4242
+            </p>
           </div>
         )}
 

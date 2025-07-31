@@ -1,15 +1,18 @@
 import Stripe from 'stripe'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
-
 export default async function handler(req, res) {
   // CORS headers
+  res.setHeader('Access-Control-Allow-Credentials', true)
   res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT')
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+  )
 
   if (req.method === 'OPTIONS') {
-    return res.status(200).end()
+    res.status(200).end()
+    return
   }
 
   if (req.method !== 'POST') {
@@ -17,24 +20,41 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { planType, userId } = req.body
+    // Debug log
+    console.log('🔍 Environment check:', {
+      hasKey: !!process.env.STRIPE_SECRET_KEY,
+      keyStart: process.env.STRIPE_SECRET_KEY?.substring(0, 7)
+    })
 
-    // Určit cenu podle plánu
-    const amount = planType === 'yearly' ? 89900 : 19700 // v halířích
-    const productId = planType === 'yearly' ? 'prod_SiGVz8wtZ3qYbz' : 'prod_SiGW3JOWeE28TS'
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error('STRIPE_SECRET_KEY is not configured')
+    }
 
-    console.log(`💳 Creating payment intent for ${planType} plan, amount: ${amount}`)
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2023-10-16'
+    })
 
-    // Vytvořit Payment Intent
+    const { planType, userId, email } = req.body
+
+    // Ceny v halířích
+    const amount = planType === 'yearly' ? 89900 : 19700
+
+    console.log('💳 Creating payment intent:', { planType, amount, userId })
+
     const paymentIntent = await stripe.paymentIntents.create({
       amount,
       currency: 'czk',
-      metadata: {
+      automatic_payment_methods: {
+        enabled: true,
+      },
+      meta{
         planType,
-        productId,
-        userId
+        userId,
+        email: email || ''
       }
     })
+
+    console.log('✅ Payment intent created:', paymentIntent.id)
 
     res.status(200).json({
       clientSecret: paymentIntent.client_secret,
@@ -42,7 +62,10 @@ export default async function handler(req, res) {
     })
 
   } catch (error) {
-    console.error('❌ Error creating payment intent:', error)
-    res.status(500).json({ error: error.message })
+    console.error('❌ Error:', error)
+    res.status(500).json({ 
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    })
   }
 }
