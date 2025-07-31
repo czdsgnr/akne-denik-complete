@@ -4,10 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
+    "build": "next build",
+    "vercel-build": "npm install --legacy-peer-deps && next build"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",
@@ -89,10 +87,6 @@
     ]
   },
   "engines": {
-  "node": "18.x"
-},
-"scripts": {
-  "build": "next build",
-  "vercel-build": "npm install --legacy-peer-deps && next build"
-}
+    "node": "18.x"
+  }
 }
