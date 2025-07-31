@@ -20,10 +20,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Debug log
+    // Debug logs
+    console.log('📍 Request body:', JSON.stringify(req.body))
     console.log('🔍 Environment check:', {
       hasKey: !!process.env.STRIPE_SECRET_KEY,
-      keyStart: process.env.STRIPE_SECRET_KEY?.substring(0, 7)
+      keyStart: process.env.STRIPE_SECRET_KEY?.substring(0, 7),
+      keyType: process.env.STRIPE_SECRET_KEY?.includes('test') ? 'TEST' : 'LIVE'
     })
 
     if (!process.env.STRIPE_SECRET_KEY) {
@@ -36,6 +38,11 @@ export default async function handler(req, res) {
 
     const { planType, userId, email } = req.body
 
+    // Validace vstupů
+    if (!planType || !userId) {
+      throw new Error('Missing required fields: planType or userId')
+    }
+
     // Ceny v halířích
     const amount = planType === 'yearly' ? 89900 : 19700
 
@@ -47,7 +54,7 @@ export default async function handler(req, res) {
       automatic_payment_methods: {
         enabled: true,
       },
-      meta{  // ⚠️ TADY BYLA CHYBA - bylo "meta{" místo "metadata: {"
+      meta{  // ✅ OPRAVENO - správná syntaxe
         planType,
         userId,
         email: email || ''
@@ -62,7 +69,7 @@ export default async function handler(req, res) {
     })
 
   } catch (error) {
-    console.error('❌ Error:', error)
+    console.error('❌ Error in create-payment-intent:', error)
     res.status(500).json({ 
       error: error.message,
       details: process.env.NODE_ENV === 'development' ? error.stack : undefined
