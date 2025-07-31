@@ -54,11 +54,13 @@ export default async function handler(req, res) {
       automatic_payment_methods: {
         enabled: true,
       },
-      meta{  // ✅ OPRAVENO - správná syntaxe
-        planType,
-        userId,
-        email: email || ''
-      }
+
+metadata: {  // ✅ SPRÁVNĚ!
+  planType,
+  userId,
+  email: email || ''
+}
+
     })
 
     console.log('✅ Payment intent created:', paymentIntent.id)
