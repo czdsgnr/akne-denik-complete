@@ -1,71 +1,41 @@
-echo "// Stripe package added" | cat - api/create-payment-intent.js > temp && mv temp api/create-payment-intent.js
-
-const Stripe = (await import('stripe')).default;
-
 export default async function handler(req, res) {
-  // CORS headers
-  res.setHeader('Access-Control-Allow-Credentials', true)
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT')
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
-  )
-
-  if (req.method === 'OPTIONS') {
-    res.status(200).end()
-    return
-  }
-
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' })
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    console.log('🔍 Environment check:', {
-      hasKey: !!process.env.STRIPE_SECRET_KEY,
-      keyStart: process.env.STRIPE_SECRET_KEY?.substring(0, 7)
-    })
+    const { planType, price } = req.body;
+    
+    // Použijte Stripe API přímo přes fetch
+    const stripeResponse = await fetch('https://api.stripe.com/v1/payment_intents', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.STRIPE_SECRET_KEY}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        amount: price === '899' ? '89900' : '44900',
+        currency: 'czk',
+        'payment_method_types[]': 'card',
+        'metadata[planType]': planType,
+      }),
+    });
 
-    if (!process.env.STRIPE_SECRET_KEY) {
-      throw new Error('STRIPE_SECRET_KEY is not configured')
+    const paymentIntent = await stripeResponse.json();
+
+    if (!stripeResponse.ok) {
+      throw new Error(paymentIntent.error?.message || 'Stripe error');
     }
 
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-      apiVersion: '2023-10-16'
-    })
-
-    const { planType, userId, email } = req.body
-
-    const amount = planType === 'yearly' ? 89900 : 19700
-
-    console.log('💳 Creating payment intent:', { planType, amount, userId })
-
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount,
-      currency: 'czk',
-      automatic_payment_methods: {
-        enabled: true,
-      },
-      metadata: {  // ✅ TOTO JE SPRÁVNĚ!
-        planType,
-        userId,
-        email: email || ''
-      }
-    })
-
-    console.log('✅ Payment intent created:', paymentIntent.id)
-
-    res.status(200).json({
+    return res.status(200).json({
       clientSecret: paymentIntent.client_secret,
-      paymentIntentId: paymentIntent.id
-    })
-
+      paymentIntentId: paymentIntent.id,
+    });
   } catch (error) {
-    console.error('❌ Error:', error)
-    res.status(500).json({ 
-      error: error.message,
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    })
+    console.error('Payment error:', error);
+    return res.status(500).json({ 
+      error: 'Failed to create payment intent',
+      details: error.message 
+    });
   }
 }
