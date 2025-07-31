@@ -47,7 +47,7 @@ export default async function handler(req, res) {
       automatic_payment_methods: {
         enabled: true,
       },
-      meta{
+      meta{  // ⚠️ TADY BYLA CHYBA - bylo "meta{" místo "metadata: {"
         planType,
         userId,
         email: email || ''
