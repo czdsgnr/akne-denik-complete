@@ -20,12 +20,9 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Debug logs
-    console.log('📍 Request body:', JSON.stringify(req.body))
     console.log('🔍 Environment check:', {
       hasKey: !!process.env.STRIPE_SECRET_KEY,
-      keyStart: process.env.STRIPE_SECRET_KEY?.substring(0, 7),
-      keyType: process.env.STRIPE_SECRET_KEY?.includes('test') ? 'TEST' : 'LIVE'
+      keyStart: process.env.STRIPE_SECRET_KEY?.substring(0, 7)
     })
 
     if (!process.env.STRIPE_SECRET_KEY) {
@@ -38,12 +35,6 @@ export default async function handler(req, res) {
 
     const { planType, userId, email } = req.body
 
-    // Validace vstupů
-    if (!planType || !userId) {
-      throw new Error('Missing required fields: planType or userId')
-    }
-
-    // Ceny v halířích
     const amount = planType === 'yearly' ? 89900 : 19700
 
     console.log('💳 Creating payment intent:', { planType, amount, userId })
@@ -54,13 +45,11 @@ export default async function handler(req, res) {
       automatic_payment_methods: {
         enabled: true,
       },
-
-metadata: {  // ✅ SPRÁVNĚ!
-  planType,
-  userId,
-  email: email || ''
-}
-
+      metadata: {  // ✅ TOTO JE SPRÁVNĚ!
+        planType,
+        userId,
+        email: email || ''
+      }
     })
 
     console.log('✅ Payment intent created:', paymentIntent.id)
@@ -71,7 +60,7 @@ metadata: {  // ✅ SPRÁVNĚ!
     })
 
   } catch (error) {
-    console.error('❌ Error in create-payment-intent:', error)
+    console.error('❌ Error:', error)
     res.status(500).json({ 
       error: error.message,
       details: process.env.NODE_ENV === 'development' ? error.stack : undefined
