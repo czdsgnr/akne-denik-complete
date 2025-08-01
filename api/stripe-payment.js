@@ -1,43 +1,33 @@
-export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
   try {
-    const { planType, userId, email } = req.body;
-    const amount = planType === 'yearly' ? 89900 : 19700;
+    const { planType } = req.body;
     
-    const response = await fetch('https://api.stripe.com/v1/payment_intents', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.STRIPE_SECRET_KEY}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        amount: amount.toString(),
-        currency: 'czk',
-        'payment_method_types[]': 'card',
-        'metadata[userId]': userId,
-        'metadata[email]': email,
-        'metadata[planType]': planType
-      }),
+    // Použijte Price ID
+    const priceId = planType === 'monthly' 
+      ? 'price_1Rr3mQEvtJZVfPXMSOdytuZq'  // 197 Kč
+      : 'price_1Rr3mDEvtJZVfPXMYkrF0pAL'; // 899 Kč
+
+    // Vytvořte checkout session
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [{
+        price: priceId,
+        quantity: 1,
+      }],
+      mode: 'payment',
+      success_url: `${process.env.NEXT_PUBLIC_URL}/success`,
+      cancel_url: `${process.env.NEXT_PUBLIC_URL}/pricing`,
     });
 
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.error?.message || 'Stripe API error');
-    }
-
-    return res.status(200).json({
-      clientSecret: data.client_secret,
-      paymentIntentId: data.id,
-    });
+    res.status(200).json({ sessionId: session.id });
   } catch (error) {
-    console.error('Payment error:', error);
-    return res.status(500).json({ error: error.message });
+    console.error('Stripe error:', error);
+    res.status(500).json({ error: error.message });
   }
 }
